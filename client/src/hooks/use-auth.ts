@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { 
   auth, 
   signInWithEmailAndPassword, 
@@ -19,19 +19,18 @@ export interface AuthUser {
   role?: string;
 }
 
-// Flag to skip onAuthStateChanged sync during registration
-let isRegistering = false;
-
 export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Use ref for registration flag to avoid race conditions with closures
+  const isRegisteringRef = useRef(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         // Skip sync during registration - register() will handle the sync with proper role
-        if (isRegistering) {
+        if (isRegisteringRef.current) {
           setIsLoading(false);
           return;
         }
@@ -112,7 +111,7 @@ export function useAuth() {
 
   const register = useCallback(async (email: string, password: string, firstName: string, lastName: string, requestedRole: string = "client") => {
     setError(null);
-    isRegistering = true; // Set flag to prevent onAuthStateChanged from syncing
+    isRegisteringRef.current = true; // Set flag to prevent onAuthStateChanged from syncing
     
     try {
       const credential = await createUserWithEmailAndPassword(auth, email, password);
@@ -151,10 +150,10 @@ export function useAuth() {
         });
       }
       
-      isRegistering = false; // Reset flag
+      isRegisteringRef.current = false; // Reset flag
       return true;
     } catch (err: any) {
-      isRegistering = false; // Reset flag on error
+      isRegisteringRef.current = false; // Reset flag on error
       setError(getFirebaseErrorMessage(err.code));
       return false;
     }

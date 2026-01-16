@@ -91,9 +91,13 @@ export async function registerRoutes(
         if (!hasAdmin) {
           // First user is always admin
           role = "admin";
-        } else if (requestedRole === "stylist" || requestedRole === "client" || requestedRole === "admin") {
-          // Allow user to choose between client, stylist, or admin (for testing)
+        } else if (requestedRole === "stylist" || requestedRole === "client") {
+          // Allow user to choose between client or stylist
           role = requestedRole;
+        } else if (requestedRole === "admin" && process.env.NODE_ENV === "development") {
+          // Admin self-registration only allowed in development mode (for testing)
+          role = "admin";
+          console.warn(`DEVELOPMENT ONLY: User ${email} self-registered as admin`);
         }
         
         profile = await storage.createUserProfile({
@@ -115,9 +119,15 @@ export async function registerRoutes(
         const now = Date.now();
         const ageSeconds = (now - createdAtTime) / 1000;
         
-        if (ageSeconds < 60 && (requestedRole === "stylist" || requestedRole === "admin")) {
-          profile = await storage.updateUserProfile(uid, { role: requestedRole }) || profile;
-          console.log(`Updated user profile role for ${email} from client to: ${requestedRole}`);
+        if (ageSeconds < 60) {
+          if (requestedRole === "stylist") {
+            profile = await storage.updateUserProfile(uid, { role: requestedRole }) || profile;
+            console.log(`Updated user profile role for ${email} from client to: ${requestedRole}`);
+          } else if (requestedRole === "admin" && process.env.NODE_ENV === "development") {
+            // Admin self-registration only allowed in development mode
+            profile = await storage.updateUserProfile(uid, { role: requestedRole }) || profile;
+            console.warn(`DEVELOPMENT ONLY: Updated user profile role for ${email} to admin`);
+          }
         }
       }
       
