@@ -10,11 +10,13 @@ import Booking from "@/pages/booking";
 import Confirmation from "@/pages/confirmation";
 import MyAppointments from "@/pages/my-appointments";
 import AdminDashboard from "@/pages/admin/index";
+import AuthPage from "@/pages/auth";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/connexion" component={AuthPage} />
       <Route path="/reserver" component={Booking} />
       <Route path="/confirmation" component={Confirmation} />
       <Route path="/mes-rendez-vous" component={MyAppointments} />

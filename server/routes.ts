@@ -1,7 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, registerAuthRoutes, isAuthenticated, isAdmin } from "./replit_integrations/auth";
+import { firebaseAuth, optionalFirebaseAuth, requireAdmin, requireStylistOrAdmin } from "./firebase-auth";
+import { verifyIdToken } from "./firebase-admin";
 import { 
   insertServiceSchema, insertTeamMemberSchema, insertAppointmentSchema,
   insertEventSchema, insertGalleryImageSchema
@@ -18,9 +19,142 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // Setup authentication
-  await setupAuth(app);
-  registerAuthRoutes(app);
+
+  // Firebase Auth Sync - creates/updates user profile on login
+  app.post("/api/auth/firebase-sync", async (req, res) => {
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    const idToken = authHeader.split("Bearer ")[1];
+    
+    try {
+      const decodedToken = await verifyIdToken(idToken);
+      
+      if (!decodedToken) {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+      
+      const { uid, email, name } = decodedToken;
+      
+      // Check if user profile exists
+      let profile = await storage.getUserProfile(uid);
+      
+      if (!profile) {
+        // Create new profile - first user becomes admin
+        const hasAdmin = await storage.hasAdminUser();
+        const role = hasAdmin ? "client" : "admin";
+        
+        profile = await storage.createUserProfile({
+          userId: uid,
+          role,
+          phone: null,
+          address: null,
+          specialty: null,
+          bio: null,
+          profileImage: null,
+          isActive: true,
+        });
+        
+        console.log(`Created new user profile for ${email} with role: ${role}`);
+      }
+      
+      // Parse name
+      const nameParts = (name || "").split(" ");
+      const firstName = nameParts[0] || email?.split("@")[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || "";
+      
+      res.json({
+        userId: uid,
+        email,
+        firstName,
+        lastName,
+        role: profile.role,
+        phone: profile.phone,
+        address: profile.address
+      });
+    } catch (error) {
+      console.error("Firebase sync error:", error);
+      res.status(500).json({ message: "Failed to sync user" });
+    }
+  });
+
+  // Get current user info (with token)
+  app.get("/api/auth/user", async (req, res) => {
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    const idToken = authHeader.split("Bearer ")[1];
+    
+    try {
+      const decodedToken = await verifyIdToken(idToken);
+      
+      if (!decodedToken) {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+      
+      const profile = await storage.getUserProfile(decodedToken.uid);
+      
+      if (!profile) {
+        return res.status(404).json({ message: "User profile not found" });
+      }
+      
+      const nameParts = (decodedToken.name || "").split(" ");
+      
+      res.json({
+        id: decodedToken.uid,
+        email: decodedToken.email,
+        firstName: nameParts[0] || decodedToken.email?.split("@")[0] || "",
+        lastName: nameParts.slice(1).join(" ") || "",
+        role: profile.role,
+        phone: profile.phone,
+        address: profile.address,
+        profileImageUrl: decodedToken.picture || null
+      });
+    } catch (error) {
+      console.error("Error getting user:", error);
+      res.status(500).json({ message: "Failed to get user" });
+    }
+  });
+
+  // Get all users (admin only)
+  app.get("/api/users", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const users = await storage.getAllUserProfiles();
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  // Update user role (admin only)
+  app.patch("/api/users/:userId/role", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { role } = req.body;
+      
+      if (!["client", "stylist", "admin"].includes(role)) {
+        return res.status(400).json({ message: "Invalid role" });
+      }
+      
+      const profile = await storage.updateUserProfile(userId, { role });
+      
+      if (!profile) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      res.json(profile);
+    } catch (error) {
+      console.error("Error updating user role:", error);
+      res.status(500).json({ message: "Failed to update user role" });
+    }
+  });
 
   // Services API
   app.get("/api/services", async (req, res) => {
@@ -46,7 +180,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/services", isAdmin, async (req, res) => {
+  app.post("/api/services", firebaseAuth, requireAdmin, async (req, res) => {
     try {
       const data = insertServiceSchema.parse(req.body);
       const service = await storage.createService(data);
@@ -57,6 +191,29 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to create service" });
+    }
+  });
+
+  app.patch("/api/services/:id", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const service = await storage.updateService(req.params.id, req.body);
+      if (!service) {
+        return res.status(404).json({ message: "Service not found" });
+      }
+      res.json(service);
+    } catch (error) {
+      console.error("Error updating service:", error);
+      res.status(500).json({ message: "Failed to update service" });
+    }
+  });
+
+  app.delete("/api/services/:id", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      await storage.deleteService(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting service:", error);
+      res.status(500).json({ message: "Failed to delete service" });
     }
   });
 
@@ -84,7 +241,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/team", isAdmin, async (req, res) => {
+  app.post("/api/team", firebaseAuth, requireAdmin, async (req, res) => {
     try {
       const data = insertTeamMemberSchema.parse(req.body);
       const member = await storage.createTeamMember(data);
@@ -98,7 +255,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/team/:id", isAdmin, async (req, res) => {
+  app.patch("/api/team/:id", firebaseAuth, requireAdmin, async (req, res) => {
     try {
       const member = await storage.updateTeamMember(req.params.id, req.body);
       if (!member) {
@@ -111,10 +268,19 @@ export async function registerRoutes(
     }
   });
 
-  // Appointments API
-  app.get("/api/appointments", isAdmin, async (req: any, res) => {
+  app.delete("/api/team/:id", firebaseAuth, requireAdmin, async (req, res) => {
     try {
-      // Admin-only: return all appointments
+      await storage.deleteTeamMember(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting team member:", error);
+      res.status(500).json({ message: "Failed to delete team member" });
+    }
+  });
+
+  // Appointments API
+  app.get("/api/appointments", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
       const appointments = await storage.getAppointments();
       res.json(appointments);
     } catch (error) {
@@ -123,9 +289,12 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/appointments/my", isAuthenticated, async (req: any, res) => {
+  app.get("/api/appointments/my", firebaseAuth, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.firebaseUser?.uid;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
       const appointments = await storage.getAppointmentsByClient(userId);
       res.json(appointments);
     } catch (error) {
@@ -134,9 +303,34 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/appointments", async (req, res) => {
+  app.get("/api/appointments/stylist", firebaseAuth, requireStylistOrAdmin, async (req, res) => {
+    try {
+      const userId = req.firebaseUser?.uid;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      // Find team member linked to this user
+      const teamMember = await storage.getTeamMemberByUserId(userId);
+      if (!teamMember) {
+        return res.status(404).json({ message: "Stylist profile not found" });
+      }
+      const appointments = await storage.getAppointmentsByStylist(teamMember.id);
+      res.json(appointments);
+    } catch (error) {
+      console.error("Error fetching stylist appointments:", error);
+      res.status(500).json({ message: "Failed to fetch appointments" });
+    }
+  });
+
+  app.post("/api/appointments", optionalFirebaseAuth, async (req, res) => {
     try {
       const data = insertAppointmentSchema.parse(req.body);
+      
+      // If user is authenticated, use their ID
+      if (req.firebaseUser) {
+        data.clientId = req.firebaseUser.uid;
+      }
+      
       const appointment = await storage.createAppointment(data);
       res.status(201).json(appointment);
     } catch (error) {
@@ -148,7 +342,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/appointments/:id", isAdmin, async (req, res) => {
+  app.patch("/api/appointments/:id", firebaseAuth, requireAdmin, async (req, res) => {
     try {
       const appointment = await storage.updateAppointment(req.params.id, req.body);
       if (!appointment) {
@@ -161,7 +355,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/appointments/:id", isAdmin, async (req, res) => {
+  app.delete("/api/appointments/:id", firebaseAuth, requireAdmin, async (req, res) => {
     try {
       await storage.deleteAppointment(req.params.id);
       res.status(204).send();
@@ -216,7 +410,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/events", isAdmin, async (req, res) => {
+  app.post("/api/events", firebaseAuth, requireAdmin, async (req, res) => {
     try {
       const data = insertEventSchema.parse(req.body);
       const event = await storage.createEvent(data);
@@ -230,7 +424,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/events/:id", isAdmin, async (req, res) => {
+  app.patch("/api/events/:id", firebaseAuth, requireAdmin, async (req, res) => {
     try {
       const event = await storage.updateEvent(req.params.id, req.body);
       if (!event) {
@@ -243,7 +437,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/events/:id", isAdmin, async (req, res) => {
+  app.delete("/api/events/:id", firebaseAuth, requireAdmin, async (req, res) => {
     try {
       await storage.deleteEvent(req.params.id);
       res.status(204).send();
@@ -264,7 +458,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/gallery", isAdmin, async (req, res) => {
+  app.post("/api/gallery", firebaseAuth, requireAdmin, async (req, res) => {
     try {
       const data = insertGalleryImageSchema.parse(req.body);
       const image = await storage.createGalleryImage(data);
@@ -278,7 +472,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/gallery/:id", isAdmin, async (req, res) => {
+  app.delete("/api/gallery/:id", firebaseAuth, requireAdmin, async (req, res) => {
     try {
       await storage.deleteGalleryImage(req.params.id);
       res.status(204).send();

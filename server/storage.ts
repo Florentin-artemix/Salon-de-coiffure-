@@ -15,6 +15,7 @@ import { eq, and, gte, lte } from "drizzle-orm";
 export interface IStorage {
   // User Profiles
   getUserProfile(userId: string): Promise<UserProfile | undefined>;
+  getAllUserProfiles(): Promise<UserProfile[]>;
   createUserProfile(profile: InsertUserProfile): Promise<UserProfile>;
   updateUserProfile(userId: string, profile: Partial<InsertUserProfile>): Promise<UserProfile | undefined>;
   hasAdminUser(): Promise<boolean>;
@@ -29,6 +30,7 @@ export interface IStorage {
   // Team Members
   getTeamMembers(): Promise<TeamMember[]>;
   getTeamMember(id: string): Promise<TeamMember | undefined>;
+  getTeamMemberByUserId(userId: string): Promise<TeamMember | undefined>;
   createTeamMember(member: InsertTeamMember): Promise<TeamMember>;
   updateTeamMember(id: string, member: Partial<InsertTeamMember>): Promise<TeamMember | undefined>;
   deleteTeamMember(id: string): Promise<boolean>;
@@ -85,6 +87,10 @@ export class DatabaseStorage implements IStorage {
     return admins.length > 0;
   }
 
+  async getAllUserProfiles(): Promise<UserProfile[]> {
+    return db.select().from(userProfiles);
+  }
+
   // Services
   async getServices(): Promise<Service[]> {
     return db.select().from(services).where(eq(services.isActive, true));
@@ -117,6 +123,11 @@ export class DatabaseStorage implements IStorage {
 
   async getTeamMember(id: string): Promise<TeamMember | undefined> {
     const [member] = await db.select().from(teamMembers).where(eq(teamMembers.id, id));
+    return member;
+  }
+
+  async getTeamMemberByUserId(userId: string): Promise<TeamMember | undefined> {
+    const [member] = await db.select().from(teamMembers).where(eq(teamMembers.userId, userId));
     return member;
   }
 

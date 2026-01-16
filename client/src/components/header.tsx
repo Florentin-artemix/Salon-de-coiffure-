@@ -2,10 +2,18 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/hooks/use-auth";
-import { Menu, X, Crown, Calendar, Users, LogOut, LayoutDashboard } from "lucide-react";
+import { Menu, Crown, Calendar, LogOut, LayoutDashboard, User } from "lucide-react";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import logoUrl from "@assets/WhatsApp_Image_2025-08-22_at_13.10.40_1768572587833.jpeg";
 
 const navLinks = [
@@ -16,11 +24,14 @@ const navLinks = [
 ];
 
 export function Header() {
-  const { user, isAuthenticated, isLoading } = useAuth();
-  const [location] = useLocation();
+  const { user, isAuthenticated, isLoading, logout, isAdmin, isStylist } = useAuth();
+  const [location, navigate] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
 
-  const isAdmin = false;
+  const handleLogout = async () => {
+    await logout();
+    navigate("/");
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -52,39 +63,74 @@ export function Header() {
             <div className="h-9 w-24 animate-pulse rounded-md bg-muted" />
           ) : isAuthenticated && user ? (
             <div className="flex items-center gap-2">
-              {isAdmin && (
-                <Link href="/admin">
-                  <Button variant="ghost" size="sm" data-testid="link-admin">
-                    <LayoutDashboard className="mr-2 h-4 w-4" />
-                    Admin
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full" data-testid="button-user-menu">
+                    <Avatar className="h-9 w-9">
+                      <AvatarImage src={user.profileImageUrl || ""} alt={user.displayName || "User"} />
+                      <AvatarFallback>
+                        {user.firstName?.[0] || user.email?.[0]?.toUpperCase() || "U"}
+                      </AvatarFallback>
+                    </Avatar>
                   </Button>
-                </Link>
-              )}
-              <Link href="/mes-rendez-vous">
-                <Button variant="ghost" size="sm" data-testid="link-my-appointments">
-                  <Calendar className="mr-2 h-4 w-4" />
-                  Mes RDV
-                </Button>
-              </Link>
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={user.profileImageUrl || ""} alt={user.firstName || "User"} />
-                <AvatarFallback>
-                  {user.firstName?.[0] || user.email?.[0] || "U"}
-                </AvatarFallback>
-              </Avatar>
-              <a href="/api/logout">
-                <Button variant="ghost" size="icon" data-testid="button-logout">
-                  <LogOut className="h-4 w-4" />
-                </Button>
-              </a>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end">
+                  <DropdownMenuLabel>
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        {user.firstName} {user.lastName}
+                      </p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {user.email}
+                      </p>
+                      <p className="text-xs leading-none text-muted-foreground capitalize">
+                        {user.role}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  
+                  {isAdmin && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin" className="cursor-pointer" data-testid="link-admin">
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
+                        Administration
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  
+                  {(isAdmin || isStylist) && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/mes-rendez-vous" className="cursor-pointer" data-testid="link-my-appointments-stylist">
+                        <Calendar className="mr-2 h-4 w-4" />
+                        Mes Rendez-vous
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  
+                  <DropdownMenuItem asChild>
+                    <Link href="/mes-rendez-vous" className="cursor-pointer" data-testid="link-my-appointments">
+                      <Calendar className="mr-2 h-4 w-4" />
+                      Mes Réservations
+                    </Link>
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuSeparator />
+                  
+                  <DropdownMenuItem onClick={handleLogout} className="cursor-pointer" data-testid="button-logout">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Déconnexion
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           ) : (
-            <a href="/api/login">
+            <Link href="/connexion">
               <Button data-testid="button-login">
-                <Crown className="mr-2 h-4 w-4" />
+                <User className="mr-2 h-4 w-4" />
                 Connexion
               </Button>
-            </a>
+            </Link>
           )}
 
           <Link href="/reserver" className="hidden sm:block">
@@ -114,6 +160,28 @@ export function Header() {
                     {link.label}
                   </a>
                 ))}
+                
+                {isAuthenticated && user && (
+                  <>
+                    {isAdmin && (
+                      <Link
+                        href="/admin"
+                        onClick={() => setIsOpen(false)}
+                        className="text-lg font-medium transition-colors hover:text-primary"
+                      >
+                        Administration
+                      </Link>
+                    )}
+                    <Link
+                      href="/mes-rendez-vous"
+                      onClick={() => setIsOpen(false)}
+                      className="text-lg font-medium transition-colors hover:text-primary"
+                    >
+                      Mes Réservations
+                    </Link>
+                  </>
+                )}
+                
                 <Link
                   href="/reserver"
                   onClick={() => setIsOpen(false)}
@@ -124,6 +192,33 @@ export function Header() {
                     Réserver
                   </Button>
                 </Link>
+                
+                {!isAuthenticated && (
+                  <Link
+                    href="/connexion"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <Button variant="outline" className="w-full" data-testid="button-mobile-login">
+                      <User className="mr-2 h-4 w-4" />
+                      Connexion
+                    </Button>
+                  </Link>
+                )}
+                
+                {isAuthenticated && (
+                  <Button 
+                    variant="outline" 
+                    className="w-full" 
+                    onClick={() => {
+                      handleLogout();
+                      setIsOpen(false);
+                    }}
+                    data-testid="button-mobile-logout"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Déconnexion
+                  </Button>
+                )}
               </nav>
             </SheetContent>
           </Sheet>
