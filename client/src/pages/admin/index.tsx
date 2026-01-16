@@ -20,11 +20,22 @@ import { apiRequest } from "@/lib/queryClient";
 import { 
   LayoutDashboard, Calendar, Users, Megaphone, Images, 
   Plus, LogOut, Crown, Scissors, Clock, CheckCircle2,
-  XCircle, AlertCircle, Edit, Trash2, Home
+  XCircle, AlertCircle, Edit, Trash2, Home, UserCog, Shield
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
-import type { Appointment, TeamMember, Event, GalleryImage } from "@shared/schema";
+import type { Appointment, TeamMember, Event, GalleryImage, UserProfile } from "@shared/schema";
+
+interface UserWithDetails extends UserProfile {
+  email?: string;
+  displayName?: string;
+}
+
+const roleLabels: Record<string, string> = {
+  admin: "Administrateur",
+  stylist: "Coiffeur/Coiffeuse",
+  client: "Client",
+};
 
 const statusOptions = [
   { value: "pending", label: "En attente", icon: AlertCircle },
@@ -52,6 +63,24 @@ export default function AdminDashboard() {
 
   const { data: events = [], isLoading: eventsLoading } = useQuery<Event[]>({
     queryKey: ["/api/events"],
+  });
+
+  const { data: userProfiles = [], isLoading: usersLoading } = useQuery<UserProfile[]>({
+    queryKey: ["/api/users"],
+    enabled: isAuthenticated && user?.role === "admin",
+  });
+
+  const updateUserRoleMutation = useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
+      return apiRequest("PATCH", `/api/users/${userId}/role`, { role });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({ title: "Rôle mis à jour avec succès" });
+    },
+    onError: () => {
+      toast({ title: "Erreur lors de la mise à jour du rôle", variant: "destructive" });
+    },
   });
 
   const updateAppointmentMutation = useMutation({
@@ -88,7 +117,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      window.location.href = "/api/login";
+      window.location.href = "/connexion";
     }
   }, [authLoading, isAuthenticated]);
 
@@ -144,8 +173,9 @@ export default function AdminDashboard() {
             {[
               { id: "dashboard", label: "Tableau de bord", icon: LayoutDashboard },
               { id: "appointments", label: "Rendez-vous", icon: Calendar },
-              { id: "team", label: "\u00c9quipe", icon: Users },
-              { id: "events", label: "\u00c9v\u00e9nements", icon: Megaphone },
+              { id: "team", label: "Équipe", icon: Users },
+              { id: "events", label: "Événements", icon: Megaphone },
+              { id: "users", label: "Utilisateurs", icon: UserCog },
             ].map((item) => (
               <Button
                 key={item.id}
@@ -506,6 +536,81 @@ export default function AdminDashboard() {
                 )}
               </div>
             </div>
+          )}
+
+          {activeTab === "users" && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5" />
+                  Gestion des utilisateurs
+                </CardTitle>
+                <CardDescription>Gérez les comptes utilisateurs et attribuez les rôles</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {usersLoading ? (
+                  <div className="space-y-2">
+                    {[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-12" />)}
+                  </div>
+                ) : userProfiles.length === 0 ? (
+                  <div className="text-center py-12">
+                    <UserCog className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">Aucun utilisateur enregistré</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>ID Utilisateur</TableHead>
+                        <TableHead>Téléphone</TableHead>
+                        <TableHead>Rôle actuel</TableHead>
+                        <TableHead>Statut</TableHead>
+                        <TableHead>Changer le rôle</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {userProfiles.map((profile) => (
+                        <TableRow key={profile.id} data-testid={`user-row-${profile.userId}`}>
+                          <TableCell className="font-mono text-sm">
+                            {profile.userId.substring(0, 12)}...
+                          </TableCell>
+                          <TableCell>{profile.phone || "-"}</TableCell>
+                          <TableCell>
+                            <Badge variant={profile.role === "admin" ? "default" : profile.role === "stylist" ? "secondary" : "outline"}>
+                              {roleLabels[profile.role] || profile.role}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={profile.isActive ? "default" : "secondary"}>
+                              {profile.isActive ? "Actif" : "Inactif"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Select
+                              value={profile.role}
+                              onValueChange={(value) => updateUserRoleMutation.mutate({ userId: profile.userId, role: value })}
+                              disabled={profile.userId === user?.id}
+                            >
+                              <SelectTrigger className="w-40" data-testid={`select-role-${profile.userId}`}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="client">Client</SelectItem>
+                                <SelectItem value="stylist">Coiffeur/Coiffeuse</SelectItem>
+                                <SelectItem value="admin">Administrateur</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            {profile.userId === user?.id && (
+                              <p className="text-xs text-muted-foreground mt-1">Vous ne pouvez pas modifier votre propre rôle</p>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
           )}
         </div>
       </main>

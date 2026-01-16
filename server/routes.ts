@@ -139,6 +139,11 @@ export async function registerRoutes(
       const { userId } = req.params;
       const { role } = req.body;
       
+      // Prevent admin from changing their own role
+      if (req.userProfile && req.userProfile.userId === userId) {
+        return res.status(403).json({ message: "You cannot change your own role" });
+      }
+      
       if (!["client", "stylist", "admin"].includes(role)) {
         return res.status(400).json({ message: "Invalid role" });
       }
