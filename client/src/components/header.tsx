@@ -99,11 +99,11 @@ export function Header() {
                     </DropdownMenuItem>
                   )}
                   
-                  {(isAdmin || isStylist) && (
+                  {isStylist && (
                     <DropdownMenuItem asChild>
-                      <Link href="/mes-rendez-vous" className="cursor-pointer" data-testid="link-my-appointments-stylist">
-                        <Calendar className="mr-2 h-4 w-4" />
-                        Mes Rendez-vous
+                      <Link href="/coiffeur" className="cursor-pointer" data-testid="link-stylist-dashboard">
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
+                        Mon Espace Coiffeur
                       </Link>
                     </DropdownMenuItem>
                   )}
@@ -172,12 +172,21 @@ export function Header() {
                         Administration
                       </Link>
                     )}
+                    {isStylist && (
+                      <Link
+                        href="/coiffeur"
+                        onClick={() => setIsOpen(false)}
+                        className="text-lg font-medium transition-colors hover:text-primary"
+                      >
+                        Mon Espace Coiffeur
+                      </Link>
+                    )}
                     <Link
                       href="/mes-rendez-vous"
                       onClick={() => setIsOpen(false)}
                       className="text-lg font-medium transition-colors hover:text-primary"
                     >
-                      Mes Réservations
+                      Mes Reservations
                     </Link>
                   </>
                 )}
