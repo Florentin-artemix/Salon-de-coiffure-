@@ -38,6 +38,7 @@ export async function registerRoutes(
       }
       
       const { uid, email, name } = decodedToken;
+      const { requestedRole } = req.body;
       
       // Check if user profile exists
       let profile = await storage.getUserProfile(uid);
@@ -45,7 +46,15 @@ export async function registerRoutes(
       if (!profile) {
         // Create new profile - first user becomes admin
         const hasAdmin = await storage.hasAdminUser();
-        const role = hasAdmin ? "client" : "admin";
+        let role = "client";
+        
+        if (!hasAdmin) {
+          // First user is always admin
+          role = "admin";
+        } else if (requestedRole === "stylist" || requestedRole === "client") {
+          // Allow user to choose between client and stylist (not admin)
+          role = requestedRole;
+        }
         
         profile = await storage.createUserProfile({
           userId: uid,

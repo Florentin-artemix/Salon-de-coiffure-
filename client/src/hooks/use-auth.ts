@@ -101,13 +101,31 @@ export function useAuth() {
     }
   }, []);
 
-  const register = useCallback(async (email: string, password: string, firstName: string, lastName: string) => {
+  const register = useCallback(async (email: string, password: string, firstName: string, lastName: string, requestedRole: string = "client") => {
     setError(null);
     try {
       const credential = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(credential.user, {
         displayName: `${firstName} ${lastName}`
       });
+      
+      // Sync with backend and pass requested role
+      const idToken = await credential.user.getIdToken();
+      await fetch("/api/auth/firebase-sync", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${idToken}`
+        },
+        body: JSON.stringify({
+          uid: credential.user.uid,
+          email: credential.user.email,
+          displayName: credential.user.displayName,
+          photoURL: credential.user.photoURL,
+          requestedRole
+        })
+      });
+      
       return true;
     } catch (err: any) {
       setError(getFirebaseErrorMessage(err.code));

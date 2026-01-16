@@ -157,7 +157,7 @@ export default function Booking() {
         if (bookingData.location === "domicile") {
           return !!bookingData.address && !!bookingData.phone;
         }
-        return !!bookingData.phone;
+        return true; // Pour le salon, pas de champs requis
       case "stylist":
         return !!bookingData.stylistId;
       case "datetime":
@@ -317,23 +317,23 @@ export default function Booking() {
                       </div>
                     </RadioGroup>
 
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="phone" className="flex items-center gap-2">
-                          <Phone className="h-4 w-4" />
-                          Numero de telephone *
-                        </Label>
-                        <Input
-                          id="phone"
-                          type="tel"
-                          placeholder="+243 XXX XXX XXX"
-                          value={bookingData.phone}
-                          onChange={(e) => setBookingData({ ...bookingData, phone: e.target.value })}
-                          data-testid="input-phone"
-                        />
-                      </div>
+                    {bookingData.location === "domicile" && (
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="phone" className="flex items-center gap-2">
+                            <Phone className="h-4 w-4" />
+                            Numero de telephone *
+                          </Label>
+                          <Input
+                            id="phone"
+                            type="tel"
+                            placeholder="+243 XXX XXX XXX"
+                            value={bookingData.phone}
+                            onChange={(e) => setBookingData({ ...bookingData, phone: e.target.value })}
+                            data-testid="input-phone"
+                          />
+                        </div>
 
-                      {bookingData.location === "domicile" && (
                         <div className="space-y-2">
                           <Label htmlFor="address" className="flex items-center gap-2">
                             <MapPin className="h-4 w-4" />
@@ -347,8 +347,8 @@ export default function Booking() {
                             data-testid="input-address"
                           />
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

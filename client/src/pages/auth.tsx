@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Crown, AlertCircle } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Loader2, Crown, AlertCircle, User, Scissors } from "lucide-react";
 
 export default function AuthPage() {
   const [, navigate] = useLocation();
@@ -22,6 +23,7 @@ export default function AuthPage() {
   const [registerConfirmPassword, setRegisterConfirmPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [accountType, setAccountType] = useState<"client" | "stylist">("client");
   const [registerLoading, setRegisterLoading] = useState(false);
   const [registerError, setRegisterError] = useState<string | null>(null);
 
@@ -56,7 +58,7 @@ export default function AuthPage() {
     }
     
     setRegisterLoading(true);
-    const success = await register(registerEmail, registerPassword, firstName, lastName);
+    const success = await register(registerEmail, registerPassword, firstName, lastName, accountType);
     setRegisterLoading(false);
     if (success) {
       navigate("/");
@@ -202,6 +204,40 @@ export default function AuthPage() {
                     required
                     data-testid="input-confirm-password"
                   />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Type de compte</Label>
+                  <RadioGroup
+                    value={accountType}
+                    onValueChange={(val) => setAccountType(val as "client" | "stylist")}
+                    className="grid grid-cols-2 gap-4"
+                  >
+                    <div>
+                      <RadioGroupItem value="client" id="type-client" className="peer sr-only" />
+                      <Label
+                        htmlFor="type-client"
+                        className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-border p-4 text-center transition-all hover-elevate peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5"
+                        data-testid="type-client"
+                      >
+                        <User className="h-6 w-6 text-primary" />
+                        <span className="text-sm font-medium">Client</span>
+                        <span className="text-xs text-muted-foreground">Réserver des services</span>
+                      </Label>
+                    </div>
+                    <div>
+                      <RadioGroupItem value="stylist" id="type-stylist" className="peer sr-only" />
+                      <Label
+                        htmlFor="type-stylist"
+                        className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-border p-4 text-center transition-all hover-elevate peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5"
+                        data-testid="type-stylist"
+                      >
+                        <Scissors className="h-6 w-6 text-primary" />
+                        <span className="text-sm font-medium">Coiffeur/Coiffeuse</span>
+                        <span className="text-xs text-muted-foreground">Gérer vos rendez-vous</span>
+                      </Label>
+                    </div>
+                  </RadioGroup>
                 </div>
                 
                 <Button 
