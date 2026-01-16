@@ -19,6 +19,9 @@ export interface AuthUser {
   role?: string;
 }
 
+// Flag to skip onAuthStateChanged sync during registration
+let isRegistering = false;
+
 export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -27,6 +30,12 @@ export function useAuth() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
+        // Skip sync during registration - register() will handle the sync with proper role
+        if (isRegistering) {
+          setIsLoading(false);
+          return;
+        }
+        
         // Get the ID token and sync with backend
         const idToken = await firebaseUser.getIdToken();
         
@@ -103,15 +112,17 @@ export function useAuth() {
 
   const register = useCallback(async (email: string, password: string, firstName: string, lastName: string, requestedRole: string = "client") => {
     setError(null);
+    isRegistering = true; // Set flag to prevent onAuthStateChanged from syncing
+    
     try {
       const credential = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(credential.user, {
         displayName: `${firstName} ${lastName}`
       });
       
-      // Sync with backend and pass requested role
+      // Sync with backend and pass requested role - this creates/updates the role
       const idToken = await credential.user.getIdToken();
-      await fetch("/api/auth/firebase-sync", {
+      const syncResponse = await fetch("/api/auth/firebase-sync", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -126,8 +137,24 @@ export function useAuth() {
         })
       });
       
+      if (syncResponse.ok) {
+        const userData = await syncResponse.json();
+        // Update user state with the correct role from backend
+        setUser({
+          id: credential.user.uid,
+          email: credential.user.email,
+          firstName: firstName,
+          lastName: lastName,
+          displayName: credential.user.displayName,
+          profileImageUrl: credential.user.photoURL,
+          role: userData.role
+        });
+      }
+      
+      isRegistering = false; // Reset flag
       return true;
     } catch (err: any) {
+      isRegistering = false; // Reset flag on error
       setError(getFirebaseErrorMessage(err.code));
       return false;
     }

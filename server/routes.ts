@@ -108,6 +108,17 @@ export async function registerRoutes(
         });
         
         console.log(`Created new user profile for ${email} with role: ${role}`);
+      } else if (requestedRole && profile.role === "client" && profile.createdAt) {
+        // Allow role update for newly created profiles (within 60 seconds) when requestedRole is provided
+        // This handles the race condition between onAuthStateChanged and register() calls
+        const createdAtTime = new Date(profile.createdAt).getTime();
+        const now = Date.now();
+        const ageSeconds = (now - createdAtTime) / 1000;
+        
+        if (ageSeconds < 60 && (requestedRole === "stylist" || requestedRole === "admin")) {
+          profile = await storage.updateUserProfile(uid, { role: requestedRole }) || profile;
+          console.log(`Updated user profile role for ${email} from client to: ${requestedRole}`);
+        }
       }
       
       // Parse name
