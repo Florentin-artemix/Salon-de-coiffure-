@@ -65,9 +65,11 @@ export default function AdminDashboard() {
     queryKey: ["/api/events"],
   });
 
-  const { data: userProfiles = [], isLoading: usersLoading } = useQuery<UserProfile[]>({
+  const { data: userProfiles = [], isLoading: usersLoading, isError: usersError, refetch: refetchUsers } = useQuery<UserProfile[]>({
     queryKey: ["/api/users"],
-    enabled: isAuthenticated && user?.role === "admin",
+    enabled: isAuthenticated && user?.role === "admin" && !authLoading,
+    retry: 2,
+    retryDelay: 1000,
   });
 
   const updateUserRoleMutation = useMutation({
@@ -551,6 +553,14 @@ export default function AdminDashboard() {
                 {usersLoading ? (
                   <div className="space-y-2">
                     {[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-12" />)}
+                  </div>
+                ) : usersError ? (
+                  <div className="text-center py-12">
+                    <AlertCircle className="h-12 w-12 mx-auto text-destructive mb-4" />
+                    <p className="text-muted-foreground mb-4">Erreur lors du chargement des utilisateurs</p>
+                    <Button onClick={() => refetchUsers()} variant="outline" data-testid="button-retry-users">
+                      Réessayer
+                    </Button>
                   </div>
                 ) : userProfiles.length === 0 ? (
                   <div className="text-center py-12">
