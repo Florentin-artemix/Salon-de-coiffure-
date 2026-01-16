@@ -9,9 +9,12 @@ A comprehensive salon booking system for "King and Queen Salon" located in Bukav
 - Appointment scheduling with stylist availability (7H-21H daily)
 - Events/promotions management
 - Photo gallery section
-- User roles (client, stylist, admin)
+- User roles (client, stylist, admin) with role-specific dashboards
 - Payment is made directly to the stylist after service completion (not centralized)
 - Support both salon and home service locations (home requires address + phone)
+- Stylist dashboard (/coiffeur) with appointments, statistics, and notifications
+- Admin dashboard (/admin) with full system management
+- Internal notification system for appointments
 
 ## Tech Stack
 - **Frontend**: React 18 with TypeScript, Wouter for routing, TanStack Query for data fetching
@@ -38,17 +41,18 @@ A comprehensive salon booking system for "King and Queen Salon" located in Bukav
 ```
 
 ## Key Files
-- `shared/schema.ts` - Database schema definitions
+- `shared/schema.ts` - Database schema definitions (including notifications table)
 - `server/routes.ts` - All API endpoints
 - `server/storage.ts` - Database CRUD operations
 - `server/seed.ts` - Initial data seeding
 - `server/firebase-admin.ts` - Firebase Admin SDK initialization
 - `server/firebase-auth.ts` - Firebase authentication middleware
 - `client/src/lib/firebase.ts` - Firebase client configuration
-- `client/src/hooks/use-auth.ts` - Firebase authentication hook
-- `client/src/pages/auth.tsx` - Login/registration page
+- `client/src/hooks/use-auth.ts` - Firebase authentication hook with role management
+- `client/src/pages/auth.tsx` - Login/registration page with role selection
 - `client/src/pages/booking.tsx` - Multi-step booking flow
-- `client/src/pages/admin/index.tsx` - Admin dashboard
+- `client/src/pages/admin/index.tsx` - Admin dashboard with full system management
+- `client/src/pages/stylist/index.tsx` - Stylist dashboard with appointments and notifications
 - `client/src/pages/home.tsx` - Landing page
 
 ## Database Tables
@@ -102,6 +106,12 @@ Frontend environment variables (in `.env`):
 - `VITE_FIREBASE_*` - Firebase client configuration
 
 ## Recent Updates
+- January 2026: Added stylist dashboard (/coiffeur) with appointments, statistics, and notifications
+- January 2026: Added role selection during registration (client, stylist, admin for dev testing)
+- January 2026: Fixed race condition in registration role assignment using useRef flag pattern
+- January 2026: Added admin self-registration protection (only allowed in development mode)
+- January 2026: Added internal notification system for appointments
+- January 2026: Added navigation links based on user roles in header
 - January 2026: Migrated from Replit Auth to Firebase Authentication with email/password
 - January 2026: Added admin user management with role assignment
 - January 2026: Initial implementation with full booking flow, admin dashboard, and seeded data
