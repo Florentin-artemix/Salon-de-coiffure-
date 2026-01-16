@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Loader2, Crown, AlertCircle, User, Scissors } from "lucide-react";
+import { Loader2, Crown, AlertCircle, User, Scissors, Shield } from "lucide-react";
 
 export default function AuthPage() {
   const [, navigate] = useLocation();
@@ -23,7 +23,7 @@ export default function AuthPage() {
   const [registerConfirmPassword, setRegisterConfirmPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [accountType, setAccountType] = useState<"client" | "stylist">("client");
+  const [accountType, setAccountType] = useState<"client" | "stylist" | "admin">("client");
   const [registerLoading, setRegisterLoading] = useState(false);
   const [registerError, setRegisterError] = useState<string | null>(null);
 
@@ -210,31 +210,40 @@ export default function AuthPage() {
                   <Label>Type de compte</Label>
                   <RadioGroup
                     value={accountType}
-                    onValueChange={(val) => setAccountType(val as "client" | "stylist")}
-                    className="grid grid-cols-2 gap-4"
+                    onValueChange={(val) => setAccountType(val as "client" | "stylist" | "admin")}
+                    className="grid grid-cols-3 gap-3"
                   >
                     <div>
                       <RadioGroupItem value="client" id="type-client" className="peer sr-only" />
                       <Label
                         htmlFor="type-client"
-                        className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-border p-4 text-center transition-all hover-elevate peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5"
+                        className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-border p-3 text-center transition-all hover-elevate peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5"
                         data-testid="type-client"
                       >
-                        <User className="h-6 w-6 text-primary" />
-                        <span className="text-sm font-medium">Client</span>
-                        <span className="text-xs text-muted-foreground">Réserver des services</span>
+                        <User className="h-5 w-5 text-primary" />
+                        <span className="text-xs font-medium">Client</span>
                       </Label>
                     </div>
                     <div>
                       <RadioGroupItem value="stylist" id="type-stylist" className="peer sr-only" />
                       <Label
                         htmlFor="type-stylist"
-                        className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-border p-4 text-center transition-all hover-elevate peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5"
+                        className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-border p-3 text-center transition-all hover-elevate peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5"
                         data-testid="type-stylist"
                       >
-                        <Scissors className="h-6 w-6 text-primary" />
-                        <span className="text-sm font-medium">Coiffeur/Coiffeuse</span>
-                        <span className="text-xs text-muted-foreground">Gérer vos rendez-vous</span>
+                        <Scissors className="h-5 w-5 text-primary" />
+                        <span className="text-xs font-medium">Coiffeur</span>
+                      </Label>
+                    </div>
+                    <div>
+                      <RadioGroupItem value="admin" id="type-admin" className="peer sr-only" />
+                      <Label
+                        htmlFor="type-admin"
+                        className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-border p-3 text-center transition-all hover-elevate peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5"
+                        data-testid="type-admin"
+                      >
+                        <Shield className="h-5 w-5 text-primary" />
+                        <span className="text-xs font-medium">Admin</span>
                       </Label>
                     </div>
                   </RadioGroup>

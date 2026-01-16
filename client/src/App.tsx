@@ -10,6 +10,7 @@ import Booking from "@/pages/booking";
 import Confirmation from "@/pages/confirmation";
 import MyAppointments from "@/pages/my-appointments";
 import AdminDashboard from "@/pages/admin/index";
+import StylistDashboard from "@/pages/stylist/index";
 import AuthPage from "@/pages/auth";
 
 function Router() {
@@ -21,6 +22,7 @@ function Router() {
       <Route path="/confirmation" component={Confirmation} />
       <Route path="/mes-rendez-vous" component={MyAppointments} />
       <Route path="/admin" component={AdminDashboard} />
+      <Route path="/coiffeur" component={StylistDashboard} />
       <Route component={NotFound} />
     </Switch>
   );

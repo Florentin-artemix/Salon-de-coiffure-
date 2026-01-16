@@ -1,16 +1,17 @@
 import { 
   userProfiles, services, teamMembers, appointments, 
-  timeSlots, events, galleryImages,
+  timeSlots, events, galleryImages, notifications,
   type UserProfile, type InsertUserProfile,
   type Service, type InsertService,
   type TeamMember, type InsertTeamMember,
   type Appointment, type InsertAppointment,
   type TimeSlot, type InsertTimeSlot,
   type Event, type InsertEvent,
-  type GalleryImage, type InsertGalleryImage
+  type GalleryImage, type InsertGalleryImage,
+  type Notification, type InsertNotification
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte } from "drizzle-orm";
+import { eq, and, gte, lte, desc } from "drizzle-orm";
 
 export interface IStorage {
   // User Profiles
@@ -63,6 +64,14 @@ export interface IStorage {
   getGalleryImagesByCategory(category: string): Promise<GalleryImage[]>;
   createGalleryImage(image: InsertGalleryImage): Promise<GalleryImage>;
   deleteGalleryImage(id: string): Promise<boolean>;
+
+  // Notifications
+  getNotificationsByUser(userId: string): Promise<Notification[]>;
+  getUnreadNotificationCount(userId: string): Promise<number>;
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  markNotificationAsRead(id: string): Promise<Notification | undefined>;
+  markAllNotificationsAsRead(userId: string): Promise<void>;
+  deleteNotification(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -254,6 +263,46 @@ export class DatabaseStorage implements IStorage {
 
   async deleteGalleryImage(id: string): Promise<boolean> {
     await db.delete(galleryImages).where(eq(galleryImages.id, id));
+    return true;
+  }
+
+  // Notifications
+  async getNotificationsByUser(userId: string): Promise<Notification[]> {
+    return db.select().from(notifications)
+      .where(eq(notifications.userId, userId))
+      .orderBy(desc(notifications.createdAt));
+  }
+
+  async getUnreadNotificationCount(userId: string): Promise<number> {
+    const unread = await db.select().from(notifications)
+      .where(and(
+        eq(notifications.userId, userId),
+        eq(notifications.isRead, false)
+      ));
+    return unread.length;
+  }
+
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const [created] = await db.insert(notifications).values(notification).returning();
+    return created;
+  }
+
+  async markNotificationAsRead(id: string): Promise<Notification | undefined> {
+    const [updated] = await db.update(notifications)
+      .set({ isRead: true })
+      .where(eq(notifications.id, id))
+      .returning();
+    return updated;
+  }
+
+  async markAllNotificationsAsRead(userId: string): Promise<void> {
+    await db.update(notifications)
+      .set({ isRead: true })
+      .where(eq(notifications.userId, userId));
+  }
+
+  async deleteNotification(id: string): Promise<boolean> {
+    await db.delete(notifications).where(eq(notifications.id, id));
     return true;
   }
 }

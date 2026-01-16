@@ -5,9 +5,49 @@ import { firebaseAuth, optionalFirebaseAuth, requireAdmin, requireStylistOrAdmin
 import { verifyIdToken } from "./firebase-admin";
 import { 
   insertServiceSchema, insertTeamMemberSchema, insertAppointmentSchema,
-  insertEventSchema, insertGalleryImageSchema
+  insertEventSchema, insertGalleryImageSchema, insertNotificationSchema
 } from "@shared/schema";
 import { z } from "zod";
+
+// Helper function to notify stylists and admins about appointments
+async function notifyAboutAppointment(
+  type: "new_appointment" | "appointment_update" | "appointment_cancelled",
+  appointment: { id: string; stylistId: string; clientName: string; date: string; time: string },
+  message: string
+) {
+  try {
+    // Get the stylist's user ID from team_members
+    const teamMember = await storage.getTeamMember(appointment.stylistId);
+    if (teamMember?.userId) {
+      await storage.createNotification({
+        userId: teamMember.userId,
+        type,
+        title: type === "new_appointment" ? "Nouveau rendez-vous" : 
+               type === "appointment_update" ? "Rendez-vous modifie" : "Rendez-vous annule",
+        message,
+        relatedId: appointment.id,
+        isRead: false,
+      });
+    }
+
+    // Also notify all admins
+    const allUsers = await storage.getAllUserProfiles();
+    const admins = allUsers.filter(u => u.role === "admin");
+    for (const admin of admins) {
+      await storage.createNotification({
+        userId: admin.userId,
+        type,
+        title: type === "new_appointment" ? "Nouveau rendez-vous" : 
+               type === "appointment_update" ? "Rendez-vous modifie" : "Rendez-vous annule",
+        message,
+        relatedId: appointment.id,
+        isRead: false,
+      });
+    }
+  } catch (error) {
+    console.error("Error creating notifications:", error);
+  }
+}
 
 // Default time slots (7H-21H)
 const DEFAULT_TIME_SLOTS = [
@@ -51,8 +91,8 @@ export async function registerRoutes(
         if (!hasAdmin) {
           // First user is always admin
           role = "admin";
-        } else if (requestedRole === "stylist" || requestedRole === "client") {
-          // Allow user to choose between client and stylist (not admin)
+        } else if (requestedRole === "stylist" || requestedRole === "client" || requestedRole === "admin") {
+          // Allow user to choose between client, stylist, or admin (for testing)
           role = requestedRole;
         }
         
@@ -346,6 +386,14 @@ export async function registerRoutes(
       }
       
       const appointment = await storage.createAppointment(data);
+      
+      // Send notifications to stylist and admins
+      await notifyAboutAppointment(
+        "new_appointment",
+        appointment,
+        `Nouveau rendez-vous de ${appointment.clientName} le ${appointment.date} a ${appointment.time}`
+      );
+      
       res.status(201).json(appointment);
     } catch (error) {
       console.error("Error creating appointment:", error);
@@ -493,6 +541,107 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting gallery image:", error);
       res.status(500).json({ message: "Failed to delete gallery image" });
+    }
+  });
+
+  // Notifications API
+  app.get("/api/notifications", firebaseAuth, async (req, res) => {
+    try {
+      const userId = req.firebaseUser?.uid;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const notifications = await storage.getNotificationsByUser(userId);
+      res.json(notifications);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  app.get("/api/notifications/unread-count", firebaseAuth, async (req, res) => {
+    try {
+      const userId = req.firebaseUser?.uid;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const count = await storage.getUnreadNotificationCount(userId);
+      res.json({ count });
+    } catch (error) {
+      console.error("Error fetching unread count:", error);
+      res.status(500).json({ message: "Failed to fetch unread count" });
+    }
+  });
+
+  app.patch("/api/notifications/:id/read", firebaseAuth, async (req, res) => {
+    try {
+      const notification = await storage.markNotificationAsRead(req.params.id);
+      if (!notification) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+      res.json(notification);
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+      res.status(500).json({ message: "Failed to mark notification as read" });
+    }
+  });
+
+  app.post("/api/notifications/mark-all-read", firebaseAuth, async (req, res) => {
+    try {
+      const userId = req.firebaseUser?.uid;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      await storage.markAllNotificationsAsRead(userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+      res.status(500).json({ message: "Failed to mark all as read" });
+    }
+  });
+
+  app.delete("/api/notifications/:id", firebaseAuth, async (req, res) => {
+    try {
+      await storage.deleteNotification(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting notification:", error);
+      res.status(500).json({ message: "Failed to delete notification" });
+    }
+  });
+
+  // Dashboard stats for admin
+  app.get("/api/admin/stats", firebaseAuth, requireAdmin, async (req, res) => {
+    try {
+      const [users, appointments, services, team, events] = await Promise.all([
+        storage.getAllUserProfiles(),
+        storage.getAppointments(),
+        storage.getServices(),
+        storage.getTeamMembers(),
+        storage.getEvents()
+      ]);
+      
+      const today = new Date().toISOString().split("T")[0];
+      const todayAppointments = appointments.filter(a => a.date === today);
+      const pendingAppointments = appointments.filter(a => a.status === "pending");
+      
+      res.json({
+        totalUsers: users.length,
+        totalAppointments: appointments.length,
+        todayAppointments: todayAppointments.length,
+        pendingAppointments: pendingAppointments.length,
+        totalServices: services.length,
+        totalTeamMembers: team.length,
+        activeEvents: events.filter(e => e.isActive).length,
+        usersByRole: {
+          clients: users.filter(u => u.role === "client").length,
+          stylists: users.filter(u => u.role === "stylist").length,
+          admins: users.filter(u => u.role === "admin").length,
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching admin stats:", error);
+      res.status(500).json({ message: "Failed to fetch stats" });
     }
   });
 
