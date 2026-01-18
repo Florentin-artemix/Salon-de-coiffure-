@@ -20,7 +20,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { 
   LayoutDashboard, Calendar, Users, Megaphone, Images, 
   Plus, LogOut, Crown, Scissors, Clock, CheckCircle2,
-  XCircle, AlertCircle, Edit, Trash2, Home, UserCog, Shield
+  XCircle, AlertCircle, Edit, Trash2, Home, UserCog, Shield, UserCircle, Save, Phone
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -29,6 +29,10 @@ import type { Appointment, TeamMember, Event, GalleryImage, UserProfile } from "
 interface UserWithDetails extends UserProfile {
   email?: string;
   displayName?: string;
+}
+
+interface ProfileData extends UserProfile {
+  teamMember: TeamMember | null;
 }
 
 const roleLabels: Record<string, string> = {
@@ -117,6 +121,43 @@ export default function AdminDashboard() {
     },
   });
 
+  const { data: profileData, isLoading: profileLoading } = useQuery<ProfileData>({
+    queryKey: ["/api/profile"],
+    enabled: isAuthenticated,
+  });
+
+  const [profileForm, setProfileForm] = useState({
+    name: "",
+    phone: "",
+    specialty: "",
+    bio: "",
+  });
+
+  useEffect(() => {
+    if (profileData?.teamMember) {
+      setProfileForm({
+        name: profileData.teamMember.name || "",
+        phone: profileData.teamMember.phone || "",
+        specialty: profileData.teamMember.specialty || "",
+        bio: profileData.teamMember.bio || "",
+      });
+    }
+  }, [profileData]);
+
+  const updateProfileMutation = useMutation({
+    mutationFn: async (data: typeof profileForm) => {
+      return apiRequest("PUT", "/api/profile", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/team"] });
+      toast({ title: "Profil mis a jour avec succes" });
+    },
+    onError: () => {
+      toast({ title: "Erreur lors de la mise a jour du profil", variant: "destructive" });
+    },
+  });
+
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       window.location.href = "/connexion";
@@ -174,6 +215,7 @@ export default function AdminDashboard() {
           <nav className="flex-1 space-y-1 p-4">
             {[
               { id: "dashboard", label: "Tableau de bord", icon: LayoutDashboard },
+              { id: "profile", label: "Mon Profil", icon: UserCircle },
               { id: "appointments", label: "Rendez-vous", icon: Calendar },
               { id: "team", label: "Équipe", icon: Users },
               { id: "events", label: "Événements", icon: Megaphone },
@@ -305,11 +347,123 @@ export default function AdminDashboard() {
             </div>
           )}
 
+          {activeTab === "profile" && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Mon Profil</CardTitle>
+                <CardDescription>
+                  Completez votre profil pour apparaitre dans la section equipe du site
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {profileLoading ? (
+                  <div className="space-y-4">
+                    {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-12" />)}
+                  </div>
+                ) : (
+                  <form 
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      updateProfileMutation.mutate(profileForm);
+                    }}
+                    className="space-y-6"
+                  >
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="admin-name">Nom complet</Label>
+                        <Input
+                          id="admin-name"
+                          value={profileForm.name}
+                          onChange={(e) => setProfileForm(prev => ({ ...prev, name: e.target.value }))}
+                          placeholder="Votre nom complet"
+                          data-testid="input-admin-profile-name"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="admin-phone">Telephone</Label>
+                        <Input
+                          id="admin-phone"
+                          value={profileForm.phone}
+                          onChange={(e) => setProfileForm(prev => ({ ...prev, phone: e.target.value }))}
+                          placeholder="+243 ..."
+                          data-testid="input-admin-profile-phone"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="admin-specialty">Specialites / Role</Label>
+                      <Input
+                        id="admin-specialty"
+                        value={profileForm.specialty}
+                        onChange={(e) => setProfileForm(prev => ({ ...prev, specialty: e.target.value }))}
+                        placeholder="Ex: Administration, Direction..."
+                        data-testid="input-admin-profile-specialty"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="admin-bio">Biographie</Label>
+                      <Textarea
+                        id="admin-bio"
+                        value={profileForm.bio}
+                        onChange={(e) => setProfileForm(prev => ({ ...prev, bio: e.target.value }))}
+                        placeholder="Parlez de votre role dans le salon..."
+                        rows={4}
+                        data-testid="input-admin-profile-bio"
+                      />
+                    </div>
+                    
+                    <div className="flex justify-end">
+                      <Button 
+                        type="submit" 
+                        disabled={updateProfileMutation.isPending}
+                        data-testid="button-save-admin-profile"
+                      >
+                        <Save className="mr-2 h-4 w-4" />
+                        {updateProfileMutation.isPending ? "Enregistrement..." : "Enregistrer"}
+                      </Button>
+                    </div>
+
+                    {profileData?.teamMember && (
+                      <div className="mt-8 pt-6 border-t">
+                        <h3 className="font-medium mb-4">Apercu de votre profil public</h3>
+                        <div className="flex items-start gap-4 p-4 border rounded-lg">
+                          <Avatar className="h-16 w-16">
+                            <AvatarImage src={profileData.teamMember.profileImage || ""} />
+                            <AvatarFallback className="text-lg">
+                              {profileData.teamMember.name?.charAt(0) || "?"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <h4 className="font-semibold">{profileData.teamMember.name}</h4>
+                            {profileData.teamMember.specialty && (
+                              <p className="text-sm text-muted-foreground">{profileData.teamMember.specialty}</p>
+                            )}
+                            {profileData.teamMember.phone && (
+                              <p className="text-sm flex items-center gap-1 mt-1">
+                                <Phone className="h-3 w-3" />
+                                {profileData.teamMember.phone}
+                              </p>
+                            )}
+                            {profileData.teamMember.bio && (
+                              <p className="text-sm mt-2">{profileData.teamMember.bio}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </form>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {activeTab === "appointments" && (
             <Card>
               <CardHeader>
                 <CardTitle>Tous les rendez-vous</CardTitle>
-                <CardDescription>G\u00e9rez les rendez-vous des clients</CardDescription>
+                <CardDescription>Gerez les rendez-vous des clients</CardDescription>
               </CardHeader>
               <CardContent>
                 {appointmentsLoading ? (

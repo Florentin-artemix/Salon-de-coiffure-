@@ -7,17 +7,24 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { 
   LayoutDashboard, Calendar, Bell, LogOut, Crown, Clock, 
-  CheckCircle2, XCircle, AlertCircle, Home, User, Phone, MapPin
+  CheckCircle2, XCircle, AlertCircle, Home, User, Phone, MapPin, Save, UserCircle
 } from "lucide-react";
 import { format, parseISO, isToday, isTomorrow, isPast } from "date-fns";
 import { fr } from "date-fns/locale";
-import type { Appointment, Service, Notification } from "@shared/schema";
+import type { Appointment, Service, Notification, UserProfile, TeamMember } from "@shared/schema";
+
+interface ProfileData extends UserProfile {
+  teamMember: TeamMember | null;
+}
 
 const statusOptions = [
   { value: "pending", label: "En attente", icon: AlertCircle, color: "bg-yellow-100 text-yellow-800" },
@@ -52,6 +59,43 @@ export default function StylistDashboard() {
     queryKey: ["/api/notifications/unread-count"],
     enabled: isAuthenticated,
     refetchInterval: 30000,
+  });
+
+  const { data: profileData, isLoading: profileLoading } = useQuery<ProfileData>({
+    queryKey: ["/api/profile"],
+    enabled: isAuthenticated,
+  });
+
+  const [profileForm, setProfileForm] = useState({
+    name: "",
+    phone: "",
+    specialty: "",
+    bio: "",
+  });
+
+  useEffect(() => {
+    if (profileData?.teamMember) {
+      setProfileForm({
+        name: profileData.teamMember.name || "",
+        phone: profileData.teamMember.phone || "",
+        specialty: profileData.teamMember.specialty || "",
+        bio: profileData.teamMember.bio || "",
+      });
+    }
+  }, [profileData]);
+
+  const updateProfileMutation = useMutation({
+    mutationFn: async (data: typeof profileForm) => {
+      return apiRequest("PUT", "/api/profile", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/team"] });
+      toast({ title: "Profil mis a jour avec succes" });
+    },
+    onError: () => {
+      toast({ title: "Erreur lors de la mise a jour du profil", variant: "destructive" });
+    },
   });
 
   const markAsReadMutation = useMutation({
@@ -140,6 +184,7 @@ export default function StylistDashboard() {
           <nav className="flex-1 space-y-1 p-4">
             {[
               { id: "dashboard", label: "Tableau de bord", icon: LayoutDashboard },
+              { id: "profile", label: "Mon Profil", icon: UserCircle },
               { id: "appointments", label: "Mes Rendez-vous", icon: Calendar },
               { id: "notifications", label: "Notifications", icon: Bell, badge: unreadCount.count },
             ].map((item) => (
@@ -185,6 +230,7 @@ export default function StylistDashboard() {
         <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-4 border-b bg-background px-6">
           <h1 className="font-serif text-xl font-semibold capitalize">
             {activeTab === "dashboard" ? "Tableau de bord" : 
+             activeTab === "profile" ? "Mon Profil" :
              activeTab === "appointments" ? "Mes Rendez-vous" : "Notifications"}
           </h1>
           <div className="flex items-center gap-2">
@@ -335,6 +381,118 @@ export default function StylistDashboard() {
                 </Card>
               )}
             </div>
+          )}
+
+          {activeTab === "profile" && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Mon Profil</CardTitle>
+                <CardDescription>
+                  Completez votre profil pour apparaitre dans la section equipe du site
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {profileLoading ? (
+                  <div className="space-y-4">
+                    {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-12" />)}
+                  </div>
+                ) : (
+                  <form 
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      updateProfileMutation.mutate(profileForm);
+                    }}
+                    className="space-y-6"
+                  >
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="name">Nom complet</Label>
+                        <Input
+                          id="name"
+                          value={profileForm.name}
+                          onChange={(e) => setProfileForm(prev => ({ ...prev, name: e.target.value }))}
+                          placeholder="Votre nom complet"
+                          data-testid="input-profile-name"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="phone">Telephone</Label>
+                        <Input
+                          id="phone"
+                          value={profileForm.phone}
+                          onChange={(e) => setProfileForm(prev => ({ ...prev, phone: e.target.value }))}
+                          placeholder="+243 ..."
+                          data-testid="input-profile-phone"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="specialty">Specialites</Label>
+                      <Input
+                        id="specialty"
+                        value={profileForm.specialty}
+                        onChange={(e) => setProfileForm(prev => ({ ...prev, specialty: e.target.value }))}
+                        placeholder="Ex: Coiffure dame, Tresses, Maquillage..."
+                        data-testid="input-profile-specialty"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="bio">Biographie</Label>
+                      <Textarea
+                        id="bio"
+                        value={profileForm.bio}
+                        onChange={(e) => setProfileForm(prev => ({ ...prev, bio: e.target.value }))}
+                        placeholder="Parlez de votre experience et de vos competences..."
+                        rows={4}
+                        data-testid="input-profile-bio"
+                      />
+                    </div>
+                    
+                    <div className="flex justify-end">
+                      <Button 
+                        type="submit" 
+                        disabled={updateProfileMutation.isPending}
+                        data-testid="button-save-profile"
+                      >
+                        <Save className="mr-2 h-4 w-4" />
+                        {updateProfileMutation.isPending ? "Enregistrement..." : "Enregistrer"}
+                      </Button>
+                    </div>
+
+                    {profileData?.teamMember && (
+                      <div className="mt-8 pt-6 border-t">
+                        <h3 className="font-medium mb-4">Apercu de votre profil public</h3>
+                        <div className="flex items-start gap-4 p-4 border rounded-lg">
+                          <Avatar className="h-16 w-16">
+                            <AvatarImage src={profileData.teamMember.profileImage || ""} />
+                            <AvatarFallback className="text-lg">
+                              {profileData.teamMember.name?.charAt(0) || "?"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <h4 className="font-semibold">{profileData.teamMember.name}</h4>
+                            {profileData.teamMember.specialty && (
+                              <p className="text-sm text-muted-foreground">{profileData.teamMember.specialty}</p>
+                            )}
+                            {profileData.teamMember.phone && (
+                              <p className="text-sm flex items-center gap-1 mt-1">
+                                <Phone className="h-3 w-3" />
+                                {profileData.teamMember.phone}
+                              </p>
+                            )}
+                            {profileData.teamMember.bio && (
+                              <p className="text-sm mt-2">{profileData.teamMember.bio}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </form>
+                )}
+              </CardContent>
+            </Card>
           )}
 
           {activeTab === "appointments" && (

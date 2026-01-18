@@ -112,6 +112,21 @@ export async function registerRoutes(
         });
         
         console.log(`Created new user profile for ${email} with role: ${role}`);
+        
+        // Create team_member entry for stylists and admins
+        if (role === "stylist" || role === "admin") {
+          const displayName = name || email?.split("@")[0] || "Nouveau membre";
+          await storage.createTeamMember({
+            userId: uid,
+            name: displayName,
+            specialty: role === "admin" ? "Administration" : null,
+            bio: null,
+            profileImage: null,
+            phone: null,
+            isActive: true,
+          });
+          console.log(`Created team member for ${email}`)
+        }
       } else if (requestedRole && profile.role === "client" && profile.createdAt) {
         // Allow role update for newly created profiles (within 60 seconds) when requestedRole is provided
         // This handles the race condition between onAuthStateChanged and register() calls
@@ -120,13 +135,34 @@ export async function registerRoutes(
         const ageSeconds = (now - createdAtTime) / 1000;
         
         if (ageSeconds < 60) {
+          let newRole: string | null = null;
           if (requestedRole === "stylist") {
+            newRole = requestedRole;
             profile = await storage.updateUserProfile(uid, { role: requestedRole }) || profile;
             console.log(`Updated user profile role for ${email} from client to: ${requestedRole}`);
           } else if (requestedRole === "admin" && process.env.NODE_ENV === "development") {
             // Admin self-registration only allowed in development mode
+            newRole = requestedRole;
             profile = await storage.updateUserProfile(uid, { role: requestedRole }) || profile;
             console.warn(`DEVELOPMENT ONLY: Updated user profile role for ${email} to admin`);
+          }
+          
+          // Create team_member if role changed to stylist or admin
+          if (newRole === "stylist" || newRole === "admin") {
+            const existingTeamMember = await storage.getTeamMemberByUserId(uid);
+            if (!existingTeamMember) {
+              const displayName = name || email?.split("@")[0] || "Nouveau membre";
+              await storage.createTeamMember({
+                userId: uid,
+                name: displayName,
+                specialty: newRole === "admin" ? "Administration" : null,
+                bio: null,
+                profileImage: null,
+                phone: null,
+                isActive: true,
+              });
+              console.log(`Created team member for ${email} after role update`);
+            }
           }
         }
       }
@@ -228,6 +264,91 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error updating user role:", error);
       res.status(500).json({ message: "Failed to update user role" });
+    }
+  });
+
+  // Profile API - Get current user's profile with team member info
+  app.get("/api/profile", firebaseAuth, async (req, res) => {
+    try {
+      const userId = req.firebaseUser?.uid;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const profile = await storage.getUserProfile(userId);
+      if (!profile) {
+        return res.status(404).json({ message: "Profile not found" });
+      }
+      
+      // Get team member info if stylist or admin
+      let teamMember = null;
+      if (profile.role === "stylist" || profile.role === "admin") {
+        teamMember = await storage.getTeamMemberByUserId(userId);
+      }
+      
+      res.json({
+        ...profile,
+        teamMember
+      });
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+      res.status(500).json({ message: "Failed to fetch profile" });
+    }
+  });
+
+  // Profile API - Update current user's profile
+  app.put("/api/profile", firebaseAuth, async (req, res) => {
+    try {
+      const userId = req.firebaseUser?.uid;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { name, phone, specialty, bio, profileImage, address } = req.body;
+      
+      // Update user profile
+      const updatedProfile = await storage.updateUserProfile(userId, {
+        phone,
+        address,
+        specialty,
+        bio,
+        profileImage,
+      });
+      
+      if (!updatedProfile) {
+        return res.status(404).json({ message: "Profile not found" });
+      }
+      
+      // Update team member if exists
+      let teamMember = await storage.getTeamMemberByUserId(userId);
+      if (teamMember) {
+        teamMember = await storage.updateTeamMember(teamMember.id, {
+          name: name || teamMember.name,
+          phone,
+          specialty,
+          bio,
+          profileImage,
+        });
+      } else if (updatedProfile.role === "stylist" || updatedProfile.role === "admin") {
+        // Create team member if doesn't exist but user is stylist/admin
+        teamMember = await storage.createTeamMember({
+          userId,
+          name: name || "Nouveau membre",
+          phone,
+          specialty,
+          bio,
+          profileImage,
+          isActive: true,
+        });
+      }
+      
+      res.json({
+        ...updatedProfile,
+        teamMember
+      });
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
     }
   });
 
