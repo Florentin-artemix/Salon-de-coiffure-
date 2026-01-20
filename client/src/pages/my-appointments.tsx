@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Calendar, Clock, MapPin, User, Scissors, Plus, AlertCircle, Bell, Receipt, FileText } from "lucide-react";
+import { Calendar, Clock, MapPin, User, Scissors, Plus, AlertCircle, Bell, Receipt, FileText, Printer } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import type { Appointment, Notification } from "@shared/schema";
@@ -63,6 +63,67 @@ export default function MyAppointments() {
       queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
     },
   });
+
+  const handlePrintReceipt = (notification: Notification) => {
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Recu - King and Queen Salon</title>
+          <style>
+            body {
+              font-family: 'Courier New', monospace;
+              padding: 40px;
+              max-width: 400px;
+              margin: 0 auto;
+            }
+            .header {
+              text-align: center;
+              border-bottom: 2px dashed #333;
+              padding-bottom: 20px;
+              margin-bottom: 20px;
+            }
+            .logo {
+              font-size: 24px;
+              font-weight: bold;
+              margin-bottom: 5px;
+            }
+            .receipt-content {
+              white-space: pre-wrap;
+              font-size: 14px;
+              line-height: 1.6;
+            }
+            .footer {
+              text-align: center;
+              border-top: 2px dashed #333;
+              padding-top: 20px;
+              margin-top: 20px;
+              font-size: 12px;
+            }
+            @media print {
+              body { padding: 20px; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="logo">King and Queen Salon</div>
+            <div>Bukavu, RDC</div>
+          </div>
+          <div class="receipt-content">${notification.message}</div>
+          <div class="footer">
+            <p>Merci de votre confiance!</p>
+            <p>Date d'impression: ${format(new Date(), "d MMMM yyyy 'a' HH:mm", { locale: fr })}</p>
+          </div>
+        </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.print();
+    }
+  };
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -243,9 +304,24 @@ export default function MyAppointments() {
                                 )}
                               </div>
                               {notification.type === "receipt" ? (
-                                <pre className="text-sm text-muted-foreground mt-3 whitespace-pre-wrap font-mono bg-muted/50 p-4 rounded-lg border">
-                                  {notification.message}
-                                </pre>
+                                <div className="mt-3">
+                                  <pre className="text-sm text-muted-foreground whitespace-pre-wrap font-mono bg-muted/50 p-4 rounded-lg border">
+                                    {notification.message}
+                                  </pre>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="mt-3"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePrintReceipt(notification);
+                                    }}
+                                    data-testid={`button-print-receipt-${notification.id}`}
+                                  >
+                                    <Printer className="mr-2 h-4 w-4" />
+                                    Imprimer le recu
+                                  </Button>
+                                </div>
                               ) : (
                                 <p className="text-sm text-muted-foreground mt-1">{notification.message}</p>
                               )}
