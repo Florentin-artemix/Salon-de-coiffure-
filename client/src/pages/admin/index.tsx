@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -20,7 +21,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { 
   LayoutDashboard, Calendar, Users, Megaphone, Images, 
   Plus, LogOut, Crown, Scissors, Clock, CheckCircle2,
-  XCircle, AlertCircle, Edit, Trash2, Home, UserCog, Shield, UserCircle, Save, Phone
+  XCircle, AlertCircle, Edit, Trash2, Home, UserCog, Shield, UserCircle, Save, Phone, Menu
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -49,10 +50,12 @@ const statusOptions = [
 ];
 
 export default function AdminDashboard() {
-  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading, logout } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [, navigate] = useLocation();
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
   const [isTeamDialogOpen, setIsTeamDialogOpen] = useState(false);
 
@@ -203,6 +206,11 @@ export default function AdminDashboard() {
     });
   };
 
+  const handleLogout = async () => {
+    await logout();
+    navigate("/");
+  };
+
   return (
     <div className="flex min-h-screen bg-muted/30">
       <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 border-r bg-sidebar lg:block">
@@ -241,19 +249,83 @@ export default function AdminDashboard() {
                 Retour au site
               </Button>
             </Link>
-            <a href="/api/logout">
-              <Button variant="ghost" className="w-full justify-start text-destructive" data-testid="button-admin-logout">
-                <LogOut className="mr-2 h-4 w-4" />
-                D\u00e9connexion
-              </Button>
-            </a>
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start text-destructive" 
+              onClick={handleLogout}
+              data-testid="button-admin-logout"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Deconnexion
+            </Button>
           </div>
         </div>
       </aside>
 
       <main className="flex-1 lg:pl-64">
         <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-4 border-b bg-background px-6">
-          <h1 className="font-serif text-xl font-semibold capitalize">{activeTab}</h1>
+          <div className="flex items-center gap-3">
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="lg:hidden" data-testid="button-admin-mobile-menu">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-64 p-0">
+                <div className="flex h-full flex-col">
+                  <div className="flex h-16 items-center gap-2 border-b px-6">
+                    <Crown className="h-6 w-6 text-primary" />
+                    <span className="font-serif text-lg font-semibold">Admin</span>
+                  </div>
+                  <nav className="flex-1 space-y-1 p-4">
+                    {[
+                      { id: "dashboard", label: "Tableau de bord", icon: LayoutDashboard },
+                      { id: "profile", label: "Mon Profil", icon: UserCircle },
+                      { id: "appointments", label: "Rendez-vous", icon: Calendar },
+                      { id: "team", label: "Equipe", icon: Users },
+                      { id: "events", label: "Evenements", icon: Megaphone },
+                      { id: "users", label: "Utilisateurs", icon: UserCog },
+                    ].map((item) => (
+                      <Button
+                        key={item.id}
+                        variant={activeTab === item.id ? "secondary" : "ghost"}
+                        className="w-full justify-start"
+                        onClick={() => { setActiveTab(item.id); setMobileMenuOpen(false); }}
+                        data-testid={`nav-mobile-${item.id}`}
+                      >
+                        <item.icon className="mr-2 h-4 w-4" />
+                        {item.label}
+                      </Button>
+                    ))}
+                  </nav>
+                  <div className="border-t p-4 space-y-2">
+                    <Link href="/">
+                      <Button variant="ghost" className="w-full justify-start" onClick={() => setMobileMenuOpen(false)} data-testid="link-mobile-back-home">
+                        <Home className="mr-2 h-4 w-4" />
+                        Retour au site
+                      </Button>
+                    </Link>
+                    <Button 
+                      variant="ghost" 
+                      className="w-full justify-start text-destructive" 
+                      onClick={handleLogout}
+                      data-testid="button-mobile-admin-logout"
+                    >
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Deconnexion
+                    </Button>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
+            <h1 className="font-serif text-xl font-semibold capitalize">
+              {activeTab === "dashboard" ? "Tableau de bord" : 
+               activeTab === "profile" ? "Mon Profil" :
+               activeTab === "appointments" ? "Rendez-vous" :
+               activeTab === "team" ? "Equipe" :
+               activeTab === "events" ? "Evenements" : "Utilisateurs"}
+            </h1>
+          </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <Avatar className="h-8 w-8">

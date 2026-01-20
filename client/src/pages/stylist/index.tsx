@@ -10,13 +10,14 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { 
   LayoutDashboard, Calendar, Bell, LogOut, Crown, Clock, 
-  CheckCircle2, XCircle, AlertCircle, Home, User, Phone, MapPin, Save, UserCircle
+  CheckCircle2, XCircle, AlertCircle, Home, User, Phone, MapPin, Save, UserCircle, Menu
 } from "lucide-react";
 import { format, parseISO, isToday, isTomorrow, isPast } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -38,6 +39,7 @@ export default function StylistDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [, navigate] = useLocation();
 
   const { data: appointments = [], isLoading: appointmentsLoading } = useQuery<Appointment[]>({
@@ -228,11 +230,69 @@ export default function StylistDashboard() {
 
       <main className="flex-1 lg:pl-64">
         <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-4 border-b bg-background px-6">
-          <h1 className="font-serif text-xl font-semibold capitalize">
-            {activeTab === "dashboard" ? "Tableau de bord" : 
-             activeTab === "profile" ? "Mon Profil" :
-             activeTab === "appointments" ? "Mes Rendez-vous" : "Notifications"}
-          </h1>
+          <div className="flex items-center gap-3">
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="lg:hidden" data-testid="button-mobile-menu">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-64 p-0">
+                <div className="flex h-full flex-col">
+                  <div className="flex h-16 items-center gap-2 border-b px-6">
+                    <Crown className="h-6 w-6 text-primary" />
+                    <span className="font-serif text-lg font-semibold">Espace Coiffeur</span>
+                  </div>
+                  <nav className="flex-1 space-y-1 p-4">
+                    {[
+                      { id: "dashboard", label: "Tableau de bord", icon: LayoutDashboard },
+                      { id: "profile", label: "Mon Profil", icon: UserCircle },
+                      { id: "appointments", label: "Mes Rendez-vous", icon: Calendar },
+                      { id: "notifications", label: "Notifications", icon: Bell, badge: unreadCount.count },
+                    ].map((item) => (
+                      <Button
+                        key={item.id}
+                        variant={activeTab === item.id ? "secondary" : "ghost"}
+                        className="w-full justify-start"
+                        onClick={() => { setActiveTab(item.id); setMobileMenuOpen(false); }}
+                        data-testid={`nav-mobile-stylist-${item.id}`}
+                      >
+                        <item.icon className="mr-2 h-4 w-4" />
+                        {item.label}
+                        {item.badge && item.badge > 0 && (
+                          <Badge variant="destructive" className="ml-auto text-xs">
+                            {item.badge}
+                          </Badge>
+                        )}
+                      </Button>
+                    ))}
+                  </nav>
+                  <div className="border-t p-4 space-y-2">
+                    <Link href="/">
+                      <Button variant="ghost" className="w-full justify-start" onClick={() => setMobileMenuOpen(false)} data-testid="link-mobile-stylist-home">
+                        <Home className="mr-2 h-4 w-4" />
+                        Retour au site
+                      </Button>
+                    </Link>
+                    <Button 
+                      variant="ghost" 
+                      className="w-full justify-start text-destructive" 
+                      onClick={handleLogout}
+                      data-testid="button-mobile-stylist-logout"
+                    >
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Deconnexion
+                    </Button>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
+            <h1 className="font-serif text-xl font-semibold capitalize">
+              {activeTab === "dashboard" ? "Tableau de bord" : 
+               activeTab === "profile" ? "Mon Profil" :
+               activeTab === "appointments" ? "Mes Rendez-vous" : "Notifications"}
+            </h1>
+          </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <Avatar className="h-8 w-8">
