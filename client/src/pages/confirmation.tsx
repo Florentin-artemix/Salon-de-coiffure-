@@ -18,11 +18,11 @@ export default function Confirmation() {
             </div>
             
             <h1 className="font-serif text-3xl font-bold md:text-4xl">
-              Rendez-vous confirm\u00e9!
+              Rendez-vous confirmé!
             </h1>
             
             <p className="mt-4 text-muted-foreground">
-              Merci pour votre r\u00e9servation. Votre rendez-vous a \u00e9t\u00e9 enregistr\u00e9 avec succ\u00e8s.
+              Merci pour votre réservation. Votre rendez-vous a été enregistré avec succès.
             </p>
 
             <Card className="mt-8">
@@ -39,7 +39,7 @@ export default function Confirmation() {
                 
                 <div className="border-t pt-4">
                   <p className="text-sm text-muted-foreground">
-                    <strong>Rappel:</strong> Le paiement se fait directement au coiffeur apr\u00e8s la prestation.
+                    <strong>Rappel:</strong> Le paiement se fait directement au coiffeur après la prestation.
                   </p>
                 </div>
               </CardContent>
@@ -55,7 +55,7 @@ export default function Confirmation() {
               <Link href="/">
                 <Button variant="outline" data-testid="button-go-home">
                   <Home className="mr-2 h-4 w-4" />
-                  Retour \u00e0 l'accueil
+                  Retour à l'accueil
                 </Button>
               </Link>
             </div>

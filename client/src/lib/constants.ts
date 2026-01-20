@@ -42,7 +42,7 @@ export const SERVICES_DATA = [
   {
     id: "3",
     name: "Draid Locks",
-    description: "Tresses et locks de qualit\u00e9 professionnelle",
+    description: "Tresses et locks de qualité professionnelle",
     priceMin: 20,
     priceMax: 60,
     duration: 120,
@@ -52,8 +52,8 @@ export const SERVICES_DATA = [
   },
   {
     id: "4",
-    name: "Coiffure dame c\u00e9r\u00e9monie",
-    description: "Coiffure \u00e9l\u00e9gante pour occasions sp\u00e9ciales",
+    name: "Coiffure dame cérémonie",
+    description: "Coiffure élégante pour occasions spéciales",
     priceMin: 10,
     priceMax: null,
     duration: 90,
@@ -75,7 +75,7 @@ export const SERVICES_DATA = [
   {
     id: "6",
     name: "Tresse",
-    description: "Tresses vari\u00e9es selon mod\u00e8le choisi",
+    description: "Tresses variées selon modèle choisi",
     priceMin: 2,
     priceMax: 40,
     duration: 120,
@@ -96,7 +96,7 @@ export const SERVICES_DATA = [
   },
   {
     id: "8",
-    name: "P\u00e9dicure",
+    name: "Pédicure",
     description: "Soin complet des pieds et ongles",
     priceMin: 5,
     priceMax: 10,
@@ -119,7 +119,7 @@ export const SERVICES_DATA = [
   {
     id: "10",
     name: "Locks",
-    description: "Entretien et cr\u00e9ation de locks",
+    description: "Entretien et création de locks",
     priceMin: 5,
     priceMax: null,
     duration: 60,
@@ -129,7 +129,7 @@ export const SERVICES_DATA = [
   },
   {
     id: "11",
-    name: "Lave t\u00eate",
+    name: "Lave tête",
     description: "Shampooing et soin des cheveux",
     priceMin: 3,
     priceMax: null,

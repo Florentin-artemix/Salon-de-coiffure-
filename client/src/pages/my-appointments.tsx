@@ -15,9 +15,9 @@ import type { Appointment } from "@shared/schema";
 
 const statusLabels: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
   pending: { label: "En attente", variant: "secondary" },
-  confirmed: { label: "Confirm\u00e9", variant: "default" },
-  completed: { label: "Termin\u00e9", variant: "outline" },
-  cancelled: { label: "Annul\u00e9", variant: "destructive" },
+  confirmed: { label: "Confirmé", variant: "default" },
+  completed: { label: "Terminé", variant: "outline" },
+  cancelled: { label: "Annulé", variant: "destructive" },
 };
 
 export default function MyAppointments() {

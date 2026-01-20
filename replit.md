@@ -105,7 +105,59 @@ Firebase Authentication is used for user login/registration:
 Frontend environment variables (in `.env`):
 - `VITE_FIREBASE_*` - Firebase client configuration
 
+## File Storage (Profile Photos)
+
+The application uses Replit App Storage (Google Cloud Storage backend) for storing profile photos:
+- **Upload Flow**: Client requests signed URL → Direct upload to cloud → Object path saved in database
+- **Files Location**: Stored in bucket `repl-default-bucket-$REPL_ID`
+- **Object Path Format**: `/objects/uploads/<uuid>` stored in `profileImage` field of `team_members` table
+- **Components**: `ProfilePhotoUpload.tsx` handles upload UI, `use-upload.ts` hook manages signed URL flow
+- **Server Routes**: 
+  - `POST /api/uploads/request-url` - Generate signed upload URL
+  - `GET /objects/*` - Serve stored files
+
+### Migration to Cloudflare R2 (Alternative)
+
+If migrating the project away from Replit, you can use Cloudflare R2 for image storage:
+
+1. **Create R2 bucket** in Cloudflare dashboard
+2. **Set environment variables**:
+   - `R2_ACCOUNT_ID` - Cloudflare account ID
+   - `R2_ACCESS_KEY_ID` - R2 access key
+   - `R2_SECRET_ACCESS_KEY` - R2 secret key
+   - `R2_BUCKET_NAME` - Bucket name
+   - `R2_PUBLIC_URL` - Public bucket URL (if using custom domain)
+
+3. **Install S3-compatible SDK**: `npm install @aws-sdk/client-s3 @aws-sdk/s3-request-presigner`
+
+4. **Update upload route** to use Cloudflare R2:
+```typescript
+import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+
+const r2Client = new S3Client({
+  region: "auto",
+  endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  credentials: {
+    accessKeyId: process.env.R2_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
+  },
+});
+
+// Generate signed upload URL
+const command = new PutObjectCommand({ Bucket: process.env.R2_BUCKET_NAME, Key: objectKey });
+const signedUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
+```
+
+5. **Store the public URL** in database instead of object path:
+   - Use `${R2_PUBLIC_URL}/${objectKey}` for direct access
+   - Or use signed URLs for private files
+
 ## Recent Updates
+- January 2026: Added profile photo upload with Replit App Storage (cloud-based)
+- January 2026: Stylists can now confirm, complete, or cancel their own appointments
+- January 2026: Admin user management now shows name and email columns
+- January 2026: Fixed Unicode encoding issues in French text throughout the application
 - January 2026: Added stylist dashboard (/coiffeur) with appointments, statistics, and notifications
 - January 2026: Added role selection during registration (client, stylist, admin for dev testing)
 - January 2026: Fixed race condition in registration role assignment using useRef flag pattern

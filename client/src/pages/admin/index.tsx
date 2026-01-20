@@ -44,9 +44,9 @@ const roleLabels: Record<string, string> = {
 
 const statusOptions = [
   { value: "pending", label: "En attente", icon: AlertCircle },
-  { value: "confirmed", label: "Confirm\u00e9", icon: CheckCircle2 },
-  { value: "completed", label: "Termin\u00e9", icon: CheckCircle2 },
-  { value: "cancelled", label: "Annul\u00e9", icon: XCircle },
+  { value: "confirmed", label: "Confirmé", icon: CheckCircle2 },
+  { value: "completed", label: "Terminé", icon: CheckCircle2 },
+  { value: "cancelled", label: "Annulé", icon: XCircle },
 ];
 
 export default function AdminDashboard() {
@@ -98,7 +98,7 @@ export default function AdminDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
-      toast({ title: "Statut mis \u00e0 jour" });
+      toast({ title: "Statut mis à jour" });
     },
   });
 
@@ -109,7 +109,7 @@ export default function AdminDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/events"] });
       setIsEventDialogOpen(false);
-      toast({ title: "\u00c9v\u00e9nement cr\u00e9\u00e9" });
+      toast({ title: "Événement créé" });
     },
   });
 
@@ -120,7 +120,7 @@ export default function AdminDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/team"] });
       setIsTeamDialogOpen(false);
-      toast({ title: "Membre ajout\u00e9" });
+      toast({ title: "Membre ajouté" });
     },
   });
 
@@ -560,7 +560,7 @@ export default function AdminDashboard() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Client</TableHead>
-                        <TableHead>T\u00e9l\u00e9phone</TableHead>
+                        <TableHead>Téléphone</TableHead>
                         <TableHead>Date</TableHead>
                         <TableHead>Heure</TableHead>
                         <TableHead>Lieu</TableHead>
@@ -624,7 +624,7 @@ export default function AdminDashboard() {
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>Nouveau membre</DialogTitle>
-                      <DialogDescription>Ajouter un nouveau membre \u00e0 l'\u00e9quipe</DialogDescription>
+                      <DialogDescription>Ajouter un nouveau membre à l'équipe</DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleTeamSubmit} className="space-y-4">
                       <div className="space-y-2">
@@ -632,11 +632,11 @@ export default function AdminDashboard() {
                         <Input id="name" name="name" required data-testid="input-team-name" />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="specialty">Sp\u00e9cialit\u00e9s</Label>
+                        <Label htmlFor="specialty">Spécialités</Label>
                         <Input id="specialty" name="specialty" placeholder="Coiffure, Tresses..." data-testid="input-team-specialty" />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="phone">T\u00e9l\u00e9phone</Label>
+                        <Label htmlFor="phone">Téléphone</Label>
                         <Input id="phone" name="phone" type="tel" data-testid="input-team-phone" />
                       </div>
                       <div className="space-y-2">
@@ -660,7 +660,7 @@ export default function AdminDashboard() {
                   <Card className="col-span-full">
                     <CardContent className="py-12 text-center">
                       <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                      <p className="text-muted-foreground">Aucun membre dans l'\u00e9quipe</p>
+                      <p className="text-muted-foreground">Aucun membre dans l'équipe</p>
                     </CardContent>
                   </Card>
                 ) : (
@@ -698,13 +698,13 @@ export default function AdminDashboard() {
                   <DialogTrigger asChild>
                     <Button data-testid="button-add-event">
                       <Plus className="mr-2 h-4 w-4" />
-                      Ajouter un \u00e9v\u00e9nement
+                      Ajouter un événement
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>Nouvel \u00e9v\u00e9nement</DialogTitle>
-                      <DialogDescription>Cr\u00e9er une nouvelle promotion ou un \u00e9v\u00e9nement</DialogDescription>
+                      <DialogTitle>Nouvel événement</DialogTitle>
+                      <DialogDescription>Créer une nouvelle promotion ou un événement</DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleEventSubmit} className="space-y-4">
                       <div className="space-y-2">
@@ -716,12 +716,12 @@ export default function AdminDashboard() {
                         <Textarea id="description" name="description" data-testid="input-event-description" />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="discount">R\u00e9duction (%)</Label>
+                        <Label htmlFor="discount">Réduction (%)</Label>
                         <Input id="discount" name="discount" type="number" min="0" max="100" data-testid="input-event-discount" />
                       </div>
                       <div className="grid gap-4 sm:grid-cols-2">
                         <div className="space-y-2">
-                          <Label htmlFor="startDate">Date de d\u00e9but</Label>
+                          <Label htmlFor="startDate">Date de début</Label>
                           <Input id="startDate" name="startDate" type="date" required data-testid="input-event-start" />
                         </div>
                         <div className="space-y-2">
@@ -731,7 +731,7 @@ export default function AdminDashboard() {
                       </div>
                       <DialogFooter>
                         <Button type="submit" disabled={createEventMutation.isPending} data-testid="button-submit-event">
-                          {createEventMutation.isPending ? "Cr\u00e9ation..." : "Cr\u00e9er"}
+                          {createEventMutation.isPending ? "Création..." : "Créer"}
                         </Button>
                       </DialogFooter>
                     </form>
@@ -746,7 +746,7 @@ export default function AdminDashboard() {
                   <Card className="col-span-full">
                     <CardContent className="py-12 text-center">
                       <Megaphone className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                      <p className="text-muted-foreground">Aucun \u00e9v\u00e9nement</p>
+                      <p className="text-muted-foreground">Aucun événement</p>
                     </CardContent>
                   </Card>
                 ) : (
