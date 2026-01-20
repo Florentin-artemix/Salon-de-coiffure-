@@ -18,11 +18,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { 
   ArrowLeft, ArrowRight, Check, Calendar as CalendarIcon, 
-  MapPin, Home, Scissors, Clock, Phone, User, CheckCircle2, Loader2
+  MapPin, Home, Scissors, Clock, Phone, User, CheckCircle2, Loader2, Tag
 } from "lucide-react";
 import { format, addDays, isBefore, startOfDay } from "date-fns";
 import { fr } from "date-fns/locale";
-import type { Service, TeamMember } from "@shared/schema";
+import type { Service, TeamMember, Event } from "@shared/schema";
 
 interface AvailabilityResponse {
   date: string;
@@ -71,6 +71,17 @@ export default function Booking() {
   const { data: teamMembers = [], isLoading: teamLoading } = useQuery<TeamMember[]>({
     queryKey: ["/api/team"],
   });
+
+  const { data: activeEvents = [] } = useQuery<Event[]>({
+    queryKey: ["/api/events/active"],
+  });
+
+  // Calculate the best discount from active events
+  const bestDiscount = activeEvents.reduce((max, event) => {
+    return event.discountPercent && event.discountPercent > max ? event.discountPercent : max;
+  }, 0);
+
+  const activePromotion = activeEvents.find(e => e.discountPercent === bestDiscount && bestDiscount > 0);
 
   const [currentStep, setCurrentStep] = useState<BookingStep>("service");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
@@ -148,6 +159,17 @@ export default function Booking() {
   const currentStepIndex = steps.findIndex((s) => s.id === currentStep);
   const selectedService = services.find((s) => s.id === bookingData.serviceId);
   const selectedStylist = teamMembers.find((s) => s.id === bookingData.stylistId);
+
+  // Calculate discounted prices
+  const calculateDiscountedPrice = (price: number) => {
+    if (bestDiscount > 0) {
+      return Math.round(price * (1 - bestDiscount / 100));
+    }
+    return price;
+  };
+
+  const discountedPriceMin = selectedService ? calculateDiscountedPrice(selectedService.priceMin) : 0;
+  const discountedPriceMax = selectedService?.priceMax ? calculateDiscountedPrice(selectedService.priceMax) : null;
 
   const canProceed = () => {
     switch (currentStep) {
@@ -520,14 +542,39 @@ export default function Booking() {
                     </div>
 
                     <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-                      <p className="text-sm text-muted-foreground">
-                        <strong>Note:</strong> Le paiement se fait directement au coiffeur apres la prestation.
+                      <div className="text-sm text-muted-foreground">
+                        <strong>Note:</strong> Le paiement se fait directement au coiffeur après la prestation.
                         {selectedService && (
-                          <> Prix estime: <span className="font-serif font-bold text-primary">
-                            ${selectedService.priceMin}{selectedService.priceMax ? ` - $${selectedService.priceMax}` : ""}
-                          </span></>
+                          <div className="mt-3">
+                            <span className="block mb-1">Prix estimé:</span>
+                            {bestDiscount > 0 ? (
+                              <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="line-through text-muted-foreground">
+                                    ${selectedService.priceMin}{selectedService.priceMax ? ` - $${selectedService.priceMax}` : ""}
+                                  </span>
+                                  <Badge variant="destructive" className="text-xs" data-testid="badge-discount">
+                                    <Tag className="h-3 w-3 mr-1" />
+                                    -{bestDiscount}%
+                                  </Badge>
+                                </div>
+                                <span className="font-serif font-bold text-primary text-lg" data-testid="text-discounted-price">
+                                  ${discountedPriceMin}{discountedPriceMax ? ` - $${discountedPriceMax}` : ""}
+                                </span>
+                                {activePromotion && (
+                                  <span className="text-xs text-green-600 dark:text-green-400">
+                                    Promotion: {activePromotion.title}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="font-serif font-bold text-primary text-lg" data-testid="text-price">
+                                ${selectedService.priceMin}{selectedService.priceMax ? ` - $${selectedService.priceMax}` : ""}
+                              </span>
+                            )}
+                          </div>
                         )}
-                      </p>
+                      </div>
                     </div>
                   </div>
                 )}
