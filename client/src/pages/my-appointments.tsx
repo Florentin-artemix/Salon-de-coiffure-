@@ -67,6 +67,7 @@ export default function MyAppointments() {
   const handlePrintReceipt = (notification: Notification) => {
     const printWindow = window.open("", "_blank");
     if (printWindow) {
+      const logoUrl = `${window.location.origin}/logo-salon.jpeg`;
       printWindow.document.write(`
         <!DOCTYPE html>
         <html>
@@ -76,7 +77,7 @@ export default function MyAppointments() {
             body {
               font-family: 'Courier New', monospace;
               padding: 40px;
-              max-width: 400px;
+              max-width: 500px;
               margin: 0 auto;
             }
             .header {
@@ -85,10 +86,10 @@ export default function MyAppointments() {
               padding-bottom: 20px;
               margin-bottom: 20px;
             }
-            .logo {
-              font-size: 24px;
-              font-weight: bold;
-              margin-bottom: 5px;
+            .logo-img {
+              max-width: 280px;
+              height: auto;
+              margin-bottom: 10px;
             }
             .receipt-content {
               white-space: pre-wrap;
@@ -109,8 +110,7 @@ export default function MyAppointments() {
         </head>
         <body>
           <div class="header">
-            <div class="logo">King and Queen Salon</div>
-            <div>Bukavu, RDC</div>
+            <img src="${logoUrl}" alt="King and Queen Salon" class="logo-img" />
           </div>
           <div class="receipt-content">${notification.message}</div>
           <div class="footer">
@@ -121,7 +121,7 @@ export default function MyAppointments() {
         </html>
       `);
       printWindow.document.close();
-      printWindow.print();
+      setTimeout(() => printWindow.print(), 500);
     }
   };
 
