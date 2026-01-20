@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { firebaseAuth, optionalFirebaseAuth, requireAdmin, requireStylistOrAdmin } from "./firebase-auth";
 import { verifyIdToken } from "./firebase-admin";
+import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 import { 
   insertServiceSchema, insertTeamMemberSchema, insertAppointmentSchema,
   insertEventSchema, insertGalleryImageSchema, insertNotificationSchema
@@ -59,6 +60,9 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+
+  // Register object storage routes for file uploads
+  registerObjectStorageRoutes(app);
 
   // Firebase Auth Sync - creates/updates user profile on login
   app.post("/api/auth/firebase-sync", async (req, res) => {

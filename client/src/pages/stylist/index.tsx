@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { ProfilePhotoUpload } from "@/components/ProfilePhotoUpload";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -73,6 +74,7 @@ export default function StylistDashboard() {
     phone: "",
     specialty: "",
     bio: "",
+    profileImage: "",
   });
 
   useEffect(() => {
@@ -82,6 +84,7 @@ export default function StylistDashboard() {
         phone: profileData.teamMember.phone || "",
         specialty: profileData.teamMember.specialty || "",
         bio: profileData.teamMember.bio || "",
+        profileImage: profileData.teamMember.profileImage || "",
       });
     }
   }, [profileData]);
@@ -464,6 +467,17 @@ export default function StylistDashboard() {
                     }}
                     className="space-y-6"
                   >
+                    <div className="flex flex-col items-center mb-6">
+                      <Label className="mb-4">Photo de profil</Label>
+                      <ProfilePhotoUpload
+                        currentImage={profileForm.profileImage}
+                        fallback={profileForm.name?.charAt(0) || "?"}
+                        onUploadComplete={(objectPath) => {
+                          setProfileForm(prev => ({ ...prev, profileImage: objectPath }));
+                        }}
+                      />
+                    </div>
+
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
                         <Label htmlFor="name">Nom complet</Label>
