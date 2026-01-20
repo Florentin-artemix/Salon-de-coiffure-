@@ -575,6 +575,53 @@ export async function registerRoutes(
       }
 
       const updatedAppointment = await storage.updateAppointment(req.params.id, req.body);
+      
+      // Send receipt notification to client when appointment is marked as completed
+      if (req.body.status === "completed" && appointment.status !== "completed") {
+        try {
+          // Get service and stylist info for the receipt
+          const service = await storage.getService(appointment.serviceId);
+          const stylist = await storage.getTeamMember(appointment.stylistId);
+          
+          const serviceName = service?.name || "Service";
+          const servicePrice = service ? (service.priceMax ? `$${service.priceMin} - $${service.priceMax}` : `$${service.priceMin}`) : "";
+          const stylistName = stylist?.name || "Coiffeur";
+          
+          // Create receipt message
+          const receiptMessage = `
+RECU DE SERVICE - King and Queen Salon
+
+Client: ${appointment.clientName}
+Service: ${serviceName}
+Prix: ${servicePrice}
+Coiffeur(se): ${stylistName}
+Date: ${appointment.date}
+Heure: ${appointment.time}
+Lieu: ${appointment.location === "salon" ? "Au Salon" : "A domicile"}
+${appointment.location === "domicile" && appointment.address ? `Adresse: ${appointment.address}` : ""}
+
+Statut: Termine
+
+Merci pour votre visite!
+King and Queen Salon - Bukavu, RDC
+          `.trim();
+          
+          // Send receipt notification to client
+          await storage.createNotification({
+            userId: appointment.clientId,
+            type: "receipt",
+            title: "Recu de votre rendez-vous",
+            message: receiptMessage,
+            relatedId: appointment.id,
+            isRead: false,
+          });
+          
+          console.log(`Receipt notification sent to client ${appointment.clientId} for appointment ${appointment.id}`);
+        } catch (notifError) {
+          console.error("Error sending receipt notification:", notifError);
+        }
+      }
+      
       res.json(updatedAppointment);
     } catch (error) {
       console.error("Error updating appointment:", error);

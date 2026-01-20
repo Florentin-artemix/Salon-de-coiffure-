@@ -103,7 +103,7 @@ export const galleryImages = pgTable("gallery_images", {
 });
 
 // Notifications for internal messaging
-export const notificationTypes = ["new_appointment", "appointment_update", "appointment_cancelled", "new_user", "system"] as const;
+export const notificationTypes = ["new_appointment", "appointment_update", "appointment_cancelled", "appointment_completed", "receipt", "new_user", "system"] as const;
 export type NotificationType = typeof notificationTypes[number];
 
 export const notifications = pgTable("notifications", {
