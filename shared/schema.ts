@@ -14,6 +14,8 @@ export type UserRole = typeof userRoles[number];
 export const userProfiles = pgTable("user_profiles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().unique(),
+  name: varchar("name"),
+  email: varchar("email"),
   role: text("role").notNull().default("client"),
   phone: varchar("phone"),
   address: text("address"),

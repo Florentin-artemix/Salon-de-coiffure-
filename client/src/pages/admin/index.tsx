@@ -29,7 +29,6 @@ import { fr } from "date-fns/locale";
 import type { Appointment, TeamMember, Event, GalleryImage, UserProfile } from "@shared/schema";
 
 interface UserWithDetails extends UserProfile {
-  email?: string;
   displayName?: string;
 }
 
@@ -811,18 +810,22 @@ export default function AdminDashboard() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>ID Utilisateur</TableHead>
-                        <TableHead>Téléphone</TableHead>
-                        <TableHead>Rôle actuel</TableHead>
+                        <TableHead>Nom</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Telephone</TableHead>
+                        <TableHead>Role actuel</TableHead>
                         <TableHead>Statut</TableHead>
-                        <TableHead>Changer le rôle</TableHead>
+                        <TableHead>Changer le role</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {userProfiles.map((profile) => (
                         <TableRow key={profile.id} data-testid={`user-row-${profile.userId}`}>
-                          <TableCell className="font-mono text-sm">
-                            {profile.userId.substring(0, 12)}...
+                          <TableCell className="font-medium">
+                            {profile.name || "-"}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {profile.email || "-"}
                           </TableCell>
                           <TableCell>{profile.phone || "-"}</TableCell>
                           <TableCell>
@@ -851,7 +854,7 @@ export default function AdminDashboard() {
                               </SelectContent>
                             </Select>
                             {profile.userId === user?.id && (
-                              <p className="text-xs text-muted-foreground mt-1">Vous ne pouvez pas modifier votre propre rôle</p>
+                              <p className="text-xs text-muted-foreground mt-1">Vous ne pouvez pas modifier votre propre role</p>
                             )}
                           </TableCell>
                         </TableRow>

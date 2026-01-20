@@ -18,7 +18,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { 
   LayoutDashboard, Calendar, Bell, LogOut, Crown, Clock, 
-  CheckCircle2, XCircle, AlertCircle, Home, User, Phone, MapPin, Save, UserCircle, Menu
+  CheckCircle2, XCircle, AlertCircle, Home, User, Phone, MapPin, Save, UserCircle, Menu, Trash2
 } from "lucide-react";
 import { format, parseISO, isToday, isTomorrow, isPast } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -131,6 +131,22 @@ export default function StylistDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/appointments/stylist"] });
       toast({ title: "Statut mis a jour" });
+    },
+    onError: () => {
+      toast({ title: "Erreur lors de la mise a jour", variant: "destructive" });
+    },
+  });
+
+  const deleteAppointmentMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/appointments/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/appointments/stylist"] });
+      toast({ title: "Rendez-vous supprime" });
+    },
+    onError: () => {
+      toast({ title: "Erreur lors de la suppression", variant: "destructive" });
     },
   });
 
@@ -596,6 +612,7 @@ export default function StylistDashboard() {
                         <TableHead>Service</TableHead>
                         <TableHead>Lieu</TableHead>
                         <TableHead>Statut</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -615,6 +632,64 @@ export default function StylistDashboard() {
                             <Badge className={statusOptions.find(s => s.value === apt.status)?.color}>
                               {statusOptions.find(s => s.value === apt.status)?.label}
                             </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              {apt.status === "pending" && (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-100"
+                                  onClick={() => updateAppointmentMutation.mutate({ id: apt.id, status: "confirmed" })}
+                                  disabled={updateAppointmentMutation.isPending}
+                                  title="Confirmer"
+                                  data-testid={`button-confirm-${apt.id}`}
+                                >
+                                  <CheckCircle2 className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {apt.status === "confirmed" && (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-100"
+                                  onClick={() => updateAppointmentMutation.mutate({ id: apt.id, status: "completed" })}
+                                  disabled={updateAppointmentMutation.isPending}
+                                  title="Terminer"
+                                  data-testid={`button-complete-${apt.id}`}
+                                >
+                                  <CheckCircle2 className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {(apt.status === "pending" || apt.status === "confirmed") && (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8 text-orange-600 hover:text-orange-700 hover:bg-orange-100"
+                                  onClick={() => updateAppointmentMutation.mutate({ id: apt.id, status: "cancelled" })}
+                                  disabled={updateAppointmentMutation.isPending}
+                                  title="Annuler"
+                                  data-testid={`button-cancel-${apt.id}`}
+                                >
+                                  <XCircle className="h-4 w-4" />
+                                </Button>
+                              )}
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-100"
+                                onClick={() => {
+                                  if (confirm("Etes-vous sur de vouloir supprimer ce rendez-vous ?")) {
+                                    deleteAppointmentMutation.mutate(apt.id);
+                                  }
+                                }}
+                                disabled={deleteAppointmentMutation.isPending}
+                                title="Supprimer"
+                                data-testid={`button-delete-${apt.id}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}

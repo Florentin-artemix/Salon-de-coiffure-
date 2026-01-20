@@ -106,6 +106,8 @@ export async function registerRoutes(
         
         profile = await storage.createUserProfile({
           userId: uid,
+          name: name || email?.split("@")[0] || null,
+          email: email || null,
           role,
           phone: null,
           address: null,
@@ -550,21 +552,57 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/appointments/:id", firebaseAuth, requireAdmin, async (req, res) => {
+  // Allow both admins and stylists to update appointments
+  // Stylists can only update appointments assigned to them
+  app.patch("/api/appointments/:id", firebaseAuth, async (req, res) => {
     try {
-      const appointment = await storage.updateAppointment(req.params.id, req.body);
+      const userProfile = req.userProfile;
+      if (!userProfile || (userProfile.role !== "admin" && userProfile.role !== "stylist")) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const appointment = await storage.getAppointment(req.params.id);
       if (!appointment) {
         return res.status(404).json({ message: "Appointment not found" });
       }
-      res.json(appointment);
+
+      // Stylists can only update their own appointments
+      if (userProfile.role === "stylist") {
+        const teamMember = await storage.getTeamMemberByUserId(userProfile.userId);
+        if (!teamMember || appointment.stylistId !== teamMember.id) {
+          return res.status(403).json({ message: "You can only manage your own appointments" });
+        }
+      }
+
+      const updatedAppointment = await storage.updateAppointment(req.params.id, req.body);
+      res.json(updatedAppointment);
     } catch (error) {
       console.error("Error updating appointment:", error);
       res.status(500).json({ message: "Failed to update appointment" });
     }
   });
 
-  app.delete("/api/appointments/:id", firebaseAuth, requireAdmin, async (req, res) => {
+  // Allow both admins and stylists to delete appointments
+  app.delete("/api/appointments/:id", firebaseAuth, async (req, res) => {
     try {
+      const userProfile = req.userProfile;
+      if (!userProfile || (userProfile.role !== "admin" && userProfile.role !== "stylist")) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const appointment = await storage.getAppointment(req.params.id);
+      if (!appointment) {
+        return res.status(404).json({ message: "Appointment not found" });
+      }
+
+      // Stylists can only delete their own appointments
+      if (userProfile.role === "stylist") {
+        const teamMember = await storage.getTeamMemberByUserId(userProfile.userId);
+        if (!teamMember || appointment.stylistId !== teamMember.id) {
+          return res.status(403).json({ message: "You can only delete your own appointments" });
+        }
+      }
+
       await storage.deleteAppointment(req.params.id);
       res.status(204).send();
     } catch (error) {
