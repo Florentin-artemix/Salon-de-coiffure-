@@ -554,18 +554,46 @@ export async function registerRoutes(
     }
   });
 
-  // Allow both admins and stylists to update appointments
+  // Allow admins, stylists, and clients to update appointments
+  // Clients can only cancel their own appointments
   // Stylists can only update appointments assigned to them
   app.patch("/api/appointments/:id", firebaseAuth, async (req, res) => {
     try {
       const userProfile = req.userProfile;
-      if (!userProfile || (userProfile.role !== "admin" && userProfile.role !== "stylist")) {
+      if (!userProfile) {
         return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Only allow known roles
+      if (!["admin", "stylist", "client"].includes(userProfile.role)) {
+        return res.status(403).json({ message: "Access denied: invalid role" });
       }
 
       const appointment = await storage.getAppointment(req.params.id);
       if (!appointment) {
         return res.status(404).json({ message: "Appointment not found" });
+      }
+
+      // Validate status value
+      const validStatuses = ["pending", "confirmed", "completed", "cancelled"];
+      if (req.body.status && !validStatuses.includes(req.body.status)) {
+        return res.status(400).json({ message: "Invalid status value" });
+      }
+
+      // Clients can only cancel their own appointments
+      if (userProfile.role === "client") {
+        // Check if this is the client's own appointment
+        if (appointment.clientId !== userProfile.userId) {
+          return res.status(403).json({ message: "Vous ne pouvez annuler que vos propres rendez-vous" });
+        }
+        // Clients can only change status to cancelled, nothing else
+        if (req.body.status !== "cancelled" || Object.keys(req.body).length !== 1) {
+          return res.status(403).json({ message: "Les clients peuvent uniquement annuler leurs rendez-vous" });
+        }
+        // Can only cancel pending or confirmed appointments
+        if (appointment.status !== "pending" && appointment.status !== "confirmed") {
+          return res.status(400).json({ message: "Ce rendez-vous ne peut plus etre annule" });
+        }
       }
 
       // Stylists can only update their own appointments
@@ -576,7 +604,9 @@ export async function registerRoutes(
         }
       }
 
-      const updatedAppointment = await storage.updateAppointment(req.params.id, req.body);
+      // For clients, only allow updating status to cancelled
+      const updateData = userProfile.role === "client" ? { status: "cancelled" } : req.body;
+      const updatedAppointment = await storage.updateAppointment(req.params.id, updateData);
       
       // Send receipt notification to client when appointment is marked as completed
       if (req.body.status === "completed" && appointment.status !== "completed") {

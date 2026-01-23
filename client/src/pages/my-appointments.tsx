@@ -240,74 +240,160 @@ export default function MyAppointments() {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="grid gap-4">
-                  {appointments.map((apt) => {
-                    const status = statusLabels[apt.status] || statusLabels.pending;
-                    const canCancel = apt.status === "pending" || apt.status === "confirmed";
-                    return (
-                      <Card key={apt.id} className="hover-elevate">
-                        <CardContent className="p-6">
-                          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2">
-                                <Badge variant={status.variant}>{status.label}</Badge>
-                              </div>
-                              <div className="grid gap-2 sm:grid-cols-2 text-sm">
-                                <div className="flex items-center gap-2 text-muted-foreground">
-                                  <Calendar className="h-4 w-4" />
-                                  <span>
-                                    {format(parseISO(apt.date), "d MMMM yyyy", { locale: fr })}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-2 text-muted-foreground">
-                                  <Clock className="h-4 w-4" />
-                                  <span>{apt.time}</span>
-                                </div>
-                                <div className="flex items-center gap-2 text-muted-foreground">
-                                  <MapPin className="h-4 w-4" />
-                                  <span>{apt.location === "salon" ? "Au Salon" : "A Domicile"}</span>
-                                </div>
-                              </div>
-                            </div>
-                            {canCancel && (
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    className="text-destructive border-destructive hover:bg-destructive/10"
-                                    data-testid={`button-cancel-${apt.id}`}
-                                  >
-                                    <XCircle className="mr-2 h-4 w-4" />
-                                    Annuler
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Annuler ce rendez-vous ?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      Etes-vous sur de vouloir annuler ce rendez-vous du {format(parseISO(apt.date), "d MMMM yyyy", { locale: fr })} a {apt.time} ? Cette action est irreversible.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Non, garder</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => cancelAppointmentMutation.mutate(apt.id)}
-                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                      data-testid={`button-confirm-cancel-${apt.id}`}
-                                    >
-                                      Oui, annuler
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
+                <>
+                  {/* Upcoming Appointments */}
+                  {(() => {
+                    const upcomingAppointments = appointments.filter(
+                      apt => apt.status === "pending" || apt.status === "confirmed"
                     );
-                  })}
-                </div>
+                    const pastAppointments = appointments.filter(
+                      apt => apt.status === "completed" || apt.status === "cancelled"
+                    );
+
+                    return (
+                      <div className="space-y-8">
+                        {/* Section: A venir */}
+                        <div>
+                          <h2 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                            <Calendar className="h-5 w-5 text-primary" />
+                            Rendez-vous a venir ({upcomingAppointments.length})
+                          </h2>
+                          {upcomingAppointments.length === 0 ? (
+                            <Card>
+                              <CardContent className="flex flex-col items-center justify-center py-8">
+                                <p className="text-muted-foreground text-center mb-4">
+                                  Aucun rendez-vous a venir
+                                </p>
+                                <Link href="/reserver">
+                                  <Button variant="outline" size="sm" data-testid="button-book-new">
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    Reserver un rendez-vous
+                                  </Button>
+                                </Link>
+                              </CardContent>
+                            </Card>
+                          ) : (
+                            <div className="grid gap-4">
+                              {upcomingAppointments.map((apt) => {
+                                const status = statusLabels[apt.status] || statusLabels.pending;
+                                return (
+                                  <Card key={apt.id} className="hover-elevate">
+                                    <CardContent className="p-6">
+                                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                        <div className="space-y-2">
+                                          <div className="flex items-center gap-2">
+                                            <Badge variant={status.variant}>{status.label}</Badge>
+                                          </div>
+                                          <div className="grid gap-2 sm:grid-cols-2 text-sm">
+                                            <div className="flex items-center gap-2 text-muted-foreground">
+                                              <Calendar className="h-4 w-4" />
+                                              <span>
+                                                {format(parseISO(apt.date), "d MMMM yyyy", { locale: fr })}
+                                              </span>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-muted-foreground">
+                                              <Clock className="h-4 w-4" />
+                                              <span>{apt.time}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-muted-foreground">
+                                              <MapPin className="h-4 w-4" />
+                                              <span>{apt.location === "salon" ? "Au Salon" : "A Domicile"}</span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <AlertDialog>
+                                          <AlertDialogTrigger asChild>
+                                            <Button 
+                                              variant="outline" 
+                                              size="sm" 
+                                              className="text-destructive border-destructive hover:bg-destructive/10"
+                                              data-testid={`button-cancel-${apt.id}`}
+                                            >
+                                              <XCircle className="mr-2 h-4 w-4" />
+                                              Annuler
+                                            </Button>
+                                          </AlertDialogTrigger>
+                                          <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                              <AlertDialogTitle>Annuler ce rendez-vous ?</AlertDialogTitle>
+                                              <AlertDialogDescription>
+                                                Etes-vous sur de vouloir annuler ce rendez-vous du {format(parseISO(apt.date), "d MMMM yyyy", { locale: fr })} a {apt.time} ? Cette action est irreversible.
+                                              </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                              <AlertDialogCancel>Non, garder</AlertDialogCancel>
+                                              <AlertDialogAction
+                                                onClick={() => cancelAppointmentMutation.mutate(apt.id)}
+                                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                                data-testid={`button-confirm-cancel-${apt.id}`}
+                                              >
+                                                Oui, annuler
+                                              </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                          </AlertDialogContent>
+                                        </AlertDialog>
+                                      </div>
+                                    </CardContent>
+                                  </Card>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Section: Historique */}
+                        <div>
+                          <h2 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                            <Clock className="h-5 w-5 text-muted-foreground" />
+                            Historique ({pastAppointments.length})
+                          </h2>
+                          {pastAppointments.length === 0 ? (
+                            <Card>
+                              <CardContent className="py-8">
+                                <p className="text-muted-foreground text-center">
+                                  Aucun rendez-vous passe
+                                </p>
+                              </CardContent>
+                            </Card>
+                          ) : (
+                            <div className="grid gap-4">
+                              {pastAppointments.map((apt) => {
+                                const status = statusLabels[apt.status] || statusLabels.pending;
+                                return (
+                                  <Card key={apt.id} className="opacity-75">
+                                    <CardContent className="p-6">
+                                      <div className="space-y-2">
+                                        <div className="flex items-center gap-2">
+                                          <Badge variant={status.variant}>{status.label}</Badge>
+                                        </div>
+                                        <div className="grid gap-2 sm:grid-cols-3 text-sm">
+                                          <div className="flex items-center gap-2 text-muted-foreground">
+                                            <Calendar className="h-4 w-4" />
+                                            <span>
+                                              {format(parseISO(apt.date), "d MMMM yyyy", { locale: fr })}
+                                            </span>
+                                          </div>
+                                          <div className="flex items-center gap-2 text-muted-foreground">
+                                            <Clock className="h-4 w-4" />
+                                            <span>{apt.time}</span>
+                                          </div>
+                                          <div className="flex items-center gap-2 text-muted-foreground">
+                                            <MapPin className="h-4 w-4" />
+                                            <span>{apt.location === "salon" ? "Au Salon" : "A Domicile"}</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </CardContent>
+                                  </Card>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </>
               )}
             </TabsContent>
 

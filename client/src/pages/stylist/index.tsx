@@ -586,82 +586,89 @@ export default function StylistDashboard() {
           )}
 
           {activeTab === "appointments" && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Tous mes rendez-vous</CardTitle>
-                <CardDescription>Gerez vos rendez-vous clients</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {appointmentsLoading ? (
-                  <div className="space-y-2">
-                    {[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-12" />)}
-                  </div>
-                ) : appointments.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Calendar className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">Aucun rendez-vous pour le moment</p>
-                  </div>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Heure</TableHead>
-                        <TableHead>Client</TableHead>
-                        <TableHead>Telephone</TableHead>
-                        <TableHead>Service</TableHead>
-                        <TableHead>Lieu</TableHead>
-                        <TableHead>Statut</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {appointments.sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time)).map((apt) => (
-                        <TableRow key={apt.id}>
-                          <TableCell>{format(parseISO(apt.date), "d MMM yyyy", { locale: fr })}</TableCell>
-                          <TableCell className="font-medium">{apt.time}</TableCell>
-                          <TableCell>{apt.clientName}</TableCell>
-                          <TableCell>{apt.clientPhone}</TableCell>
-                          <TableCell>{getServiceName(apt.serviceId)}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline">
-                              {apt.location === "salon" ? "Salon" : "Domicile"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={statusOptions.find(s => s.value === apt.status)?.color}>
-                              {statusOptions.find(s => s.value === apt.status)?.label}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              {apt.status === "pending" && (
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-100"
-                                  onClick={() => updateAppointmentMutation.mutate({ id: apt.id, status: "confirmed" })}
-                                  disabled={updateAppointmentMutation.isPending}
-                                  title="Confirmer"
-                                  data-testid={`button-confirm-${apt.id}`}
-                                >
-                                  <CheckCircle2 className="h-4 w-4" />
-                                </Button>
-                              )}
-                              {apt.status === "confirmed" && (
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-100"
-                                  onClick={() => updateAppointmentMutation.mutate({ id: apt.id, status: "completed" })}
-                                  disabled={updateAppointmentMutation.isPending}
-                                  title="Terminer"
-                                  data-testid={`button-complete-${apt.id}`}
-                                >
-                                  <CheckCircle2 className="h-4 w-4" />
-                                </Button>
-                              )}
-                              {(apt.status === "pending" || apt.status === "confirmed") && (
+            <div className="space-y-8">
+              {/* Section: Rendez-vous a venir */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5 text-primary" />
+                    Rendez-vous a venir ({appointments.filter(a => a.status === "pending" || a.status === "confirmed").length})
+                  </CardTitle>
+                  <CardDescription>Rendez-vous en attente ou confirmes</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {appointmentsLoading ? (
+                    <div className="space-y-2">
+                      {[1, 2, 3].map((i) => <Skeleton key={i} className="h-12" />)}
+                    </div>
+                  ) : appointments.filter(a => a.status === "pending" || a.status === "confirmed").length === 0 ? (
+                    <div className="text-center py-8">
+                      <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">Aucun rendez-vous a venir</p>
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Heure</TableHead>
+                          <TableHead>Client</TableHead>
+                          <TableHead>Telephone</TableHead>
+                          <TableHead>Service</TableHead>
+                          <TableHead>Lieu</TableHead>
+                          <TableHead>Statut</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {appointments
+                          .filter(a => a.status === "pending" || a.status === "confirmed")
+                          .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
+                          .map((apt) => (
+                          <TableRow key={apt.id}>
+                            <TableCell>{format(parseISO(apt.date), "d MMM yyyy", { locale: fr })}</TableCell>
+                            <TableCell className="font-medium">{apt.time}</TableCell>
+                            <TableCell>{apt.clientName}</TableCell>
+                            <TableCell>{apt.clientPhone}</TableCell>
+                            <TableCell>{getServiceName(apt.serviceId)}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline">
+                                {apt.location === "salon" ? "Salon" : "Domicile"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={statusOptions.find(s => s.value === apt.status)?.color}>
+                                {statusOptions.find(s => s.value === apt.status)?.label}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                {apt.status === "pending" && (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-100"
+                                    onClick={() => updateAppointmentMutation.mutate({ id: apt.id, status: "confirmed" })}
+                                    disabled={updateAppointmentMutation.isPending}
+                                    title="Confirmer"
+                                    data-testid={`button-confirm-${apt.id}`}
+                                  >
+                                    <CheckCircle2 className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                {apt.status === "confirmed" && (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-100"
+                                    onClick={() => updateAppointmentMutation.mutate({ id: apt.id, status: "completed" })}
+                                    disabled={updateAppointmentMutation.isPending}
+                                    title="Terminer"
+                                    data-testid={`button-complete-${apt.id}`}
+                                  >
+                                    <CheckCircle2 className="h-4 w-4" />
+                                  </Button>
+                                )}
                                 <Button
                                   size="icon"
                                   variant="ghost"
@@ -673,7 +680,71 @@ export default function StylistDashboard() {
                                 >
                                   <XCircle className="h-4 w-4" />
                                 </Button>
-                              )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Section: Historique */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-muted-foreground" />
+                    Historique ({appointments.filter(a => a.status === "completed" || a.status === "cancelled").length})
+                  </CardTitle>
+                  <CardDescription>Rendez-vous termines ou annules</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {appointmentsLoading ? (
+                    <div className="space-y-2">
+                      {[1, 2, 3].map((i) => <Skeleton key={i} className="h-12" />)}
+                    </div>
+                  ) : appointments.filter(a => a.status === "completed" || a.status === "cancelled").length === 0 ? (
+                    <div className="text-center py-8">
+                      <Clock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">Aucun historique pour le moment</p>
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Heure</TableHead>
+                          <TableHead>Client</TableHead>
+                          <TableHead>Telephone</TableHead>
+                          <TableHead>Service</TableHead>
+                          <TableHead>Lieu</TableHead>
+                          <TableHead>Statut</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {appointments
+                          .filter(a => a.status === "completed" || a.status === "cancelled")
+                          .sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time))
+                          .map((apt) => (
+                          <TableRow key={apt.id} className="opacity-75">
+                            <TableCell>{format(parseISO(apt.date), "d MMM yyyy", { locale: fr })}</TableCell>
+                            <TableCell className="font-medium">{apt.time}</TableCell>
+                            <TableCell>{apt.clientName}</TableCell>
+                            <TableCell>{apt.clientPhone}</TableCell>
+                            <TableCell>{getServiceName(apt.serviceId)}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline">
+                                {apt.location === "salon" ? "Salon" : "Domicile"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={statusOptions.find(s => s.value === apt.status)?.color}>
+                                {statusOptions.find(s => s.value === apt.status)?.label}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
                               <Button
                                 size="icon"
                                 variant="ghost"
@@ -689,15 +760,15 @@ export default function StylistDashboard() {
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           )}
 
           {activeTab === "notifications" && (
