@@ -423,7 +423,9 @@ export async function registerRoutes(
   app.get("/api/team", async (req, res) => {
     try {
       const team = await storage.getTeamMembers();
-      res.json(team);
+      // Filter out admin members (those with "Administration" specialty)
+      const stylists = team.filter(member => member.specialty !== "Administration");
+      res.json(stylists);
     } catch (error) {
       console.error("Error fetching team:", error);
       res.status(500).json({ message: "Failed to fetch team" });
