@@ -10,7 +10,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Calendar, Clock, MapPin, User, Scissors, Plus, AlertCircle, Bell, Receipt, FileText, Printer } from "lucide-react";
+import { Calendar, Clock, MapPin, User, Scissors, Plus, AlertCircle, Bell, Receipt, FileText, Printer, XCircle } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import type { Appointment, Notification } from "@shared/schema";
@@ -26,6 +38,7 @@ export default function MyAppointments() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("appointments");
+  const { toast } = useToast();
 
   const { data: appointments, isLoading } = useQuery<Appointment[]>({
     queryKey: ["/api/appointments", "my"],
@@ -61,6 +74,26 @@ export default function MyAppointments() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
       queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
+    },
+  });
+
+  const cancelAppointmentMutation = useMutation({
+    mutationFn: async (appointmentId: string) => {
+      return apiRequest("PATCH", `/api/appointments/${appointmentId}`, { status: "cancelled" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
+      toast({
+        title: "Rendez-vous annule",
+        description: "Votre rendez-vous a ete annule avec succes.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erreur",
+        description: "Impossible d'annuler le rendez-vous. Veuillez reessayer.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -210,6 +243,7 @@ export default function MyAppointments() {
                 <div className="grid gap-4">
                   {appointments.map((apt) => {
                     const status = statusLabels[apt.status] || statusLabels.pending;
+                    const canCancel = apt.status === "pending" || apt.status === "confirmed";
                     return (
                       <Card key={apt.id} className="hover-elevate">
                         <CardContent className="p-6">
@@ -235,6 +269,39 @@ export default function MyAppointments() {
                                 </div>
                               </div>
                             </div>
+                            {canCancel && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="text-destructive border-destructive hover:bg-destructive/10"
+                                    data-testid={`button-cancel-${apt.id}`}
+                                  >
+                                    <XCircle className="mr-2 h-4 w-4" />
+                                    Annuler
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Annuler ce rendez-vous ?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Etes-vous sur de vouloir annuler ce rendez-vous du {format(parseISO(apt.date), "d MMMM yyyy", { locale: fr })} a {apt.time} ? Cette action est irreversible.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Non, garder</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => cancelAppointmentMutation.mutate(apt.id)}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      data-testid={`button-confirm-cancel-${apt.id}`}
+                                    >
+                                      Oui, annuler
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
                           </div>
                         </CardContent>
                       </Card>
